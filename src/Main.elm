@@ -68,10 +68,45 @@ update msg model =
       ( { model | playerDir = turnRight model.playerDir }
       , Cmd.none
       )
+
+    KeyPress "j" ->
+      ( moveDir S model, Cmd.none )
+    KeyPress "k" ->
+      ( moveDir N model , Cmd.none)
+    KeyPress "l" ->
+      ( moveDir E model, Cmd.none )
+    KeyPress "h" ->
+      ( moveDir W model , Cmd.none)
+
+    KeyPress "y" ->
+      ( moveDir NW model, Cmd.none )
+    KeyPress "u" ->
+      ( moveDir NE model , Cmd.none)
+    KeyPress "b" ->
+      ( moveDir SW model, Cmd.none )
+    KeyPress "n" ->
+      ( moveDir SE model , Cmd.none)
+
     _ ->
       ( model
       , Cmd.none
       )
+
+moveDir : Dir -> Model -> Model
+moveDir dir model =
+  let destPos = dirCoord model.playerCoord dir
+  in
+    if canMoveTo destPos model
+    then { model | playerCoord = destPos }
+    else model
+
+canMoveTo : Coord -> Model -> Bool
+canMoveTo coord model =
+  case Array.get coord model.blueprint of
+    Nothing -> False
+    Just Floor -> True
+    Just Wall -> False
+      -- TODO: Check nobody is here
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
