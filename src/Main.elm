@@ -11,20 +11,32 @@ main = Browser.element
   , subscriptions = subscriptions
   }
 
-type alias DArray a = Array.Array (Array.Array a)
+type alias DArray a = Array.Array a
+
+type alias Coord = Int
 
 type Tile = Wall | Floor
 
-type alias Model = DArray Tile
+type alias Model =
+  { blueprint : DArray Tile
+  , creatures : List Coord
+  , playerCoord : Coord
+  , playerDir : Dir
+  }
+
+type Dir = N | NE | E | SE | S | SW | W | NW
 
 -- HTML
 
 type Msg = KeyPress String
 
-init : () -> (Model, Cmd.Cmd Msg)
+w = 4
+
+init : () -> ( Model, Cmd.Cmd Msg )
 init () =
-  ( Array.fromList
-    <| List.map Array.fromList
+  ( { blueprint =
+    Array.fromList
+    <| List.concat
     [ [Wall, Wall, Wall, Wall]
     , [Wall, Floor, Floor, Wall]
     , [Wall, Floor, Floor, Wall]
@@ -36,10 +48,14 @@ init () =
     , [Wall, Floor, Floor, Wall]
     , [Wall, Wall, Wall, Wall]
     ]
+    , creatures = []
+    , playerCoord = 5
+    , playerDir = S
+    }
   , Cmd.none
   )
 
-update : Msg -> Model -> (Model, Cmd Msg)
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   ( model
   , Cmd.none
@@ -47,24 +63,48 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+  Sub.none
 
 view : Model -> Html Msg
 view model =
-  (List.concat <|
-  Array.toList <|
-  Array.indexedMap (\i row -> Array.toList <| Array.indexedMap (tileTag i) row) model)
-  |>
-    svg [ width "500", height "500", viewBox "0 0 500 500" ]
+  svg
+    [ width "500", height "500", viewBox "0 0 500 500" ]
+    (
+      Array.toList (Array.indexedMap (tileTag model) model.blueprint)
+    )
 
-tileTag : Int -> Int -> Tile -> Html Msg
-tileTag j i tag =
-  let symbol = if tag == Floor then " " else "#"
+tileTag : Model -> Coord -> Tile -> Html Msg
+tileTag ({ playerCoord, playerDir }) i tag =
+  let
+    blade = dirCoord playerCoord playerDir
+    symbol
+      = if blade == i
+        then "-"
+        else
+          if playerCoord == i
+          then "@"
+          else
+            if tag == Floor
+            then " "
+            else "＃"
   in
     text_
-      [ x (String.fromInt (i * 10))
-      , y (String.fromInt ((1 + j) * 12))
+      [ x (String.fromInt ((modBy w i) * 20))
+      , y (String.fromInt ((1 + i // w) * 20))
       , fill "red"
       ]
+
       [ Svg.text symbol
       ]
+
+dirCoord : Coord -> Dir -> Coord
+dirCoord coord dir =
+  coord + case dir of
+    N -> -w
+    NE -> 1 - w
+    E -> 1
+    SE -> w + 1
+    S -> w
+    SW -> w - 1
+    W -> -1
+    NW -> -w - 1
