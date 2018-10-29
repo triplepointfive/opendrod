@@ -1,5 +1,7 @@
 import Array
 import Browser
+import Browser.Events exposing (onKeyDown)
+import Json.Decode as Decode
 import Html exposing (..)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -57,13 +59,28 @@ init () =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-  ( model
-  , Cmd.none
-  )
+  case msg of
+    KeyPress "w" ->
+      ( { model | playerDir = turnLeft model.playerDir }
+      , Cmd.none
+      )
+    KeyPress "e" ->
+      ( { model | playerDir = turnRight model.playerDir }
+      , Cmd.none
+      )
+    _ ->
+      ( model
+      , Cmd.none
+      )
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.none
+  onKeyDown keyDecoder
+
+keyDecoder : Decode.Decoder Msg
+keyDecoder =
+  Decode.map KeyPress
+    <| Decode.field "key" Decode.string
 
 view : Model -> Html Msg
 view model =
@@ -100,11 +117,35 @@ tileTag ({ playerCoord, playerDir }) i tag =
 dirCoord : Coord -> Dir -> Coord
 dirCoord coord dir =
   coord + case dir of
-    N -> -w
+    N  -> -w
     NE -> 1 - w
-    E -> 1
+    E  -> 1
     SE -> w + 1
-    S -> w
+    S  -> w
     SW -> w - 1
-    W -> -1
+    W  -> -1
     NW -> -w - 1
+
+turnLeft : Dir -> Dir
+turnLeft dir =
+  case dir of
+    N  -> NW
+    NE -> N
+    E  -> NE
+    SE -> E
+    S  -> SE
+    SW -> S
+    W  -> SW
+    NW -> W
+
+turnRight : Dir -> Dir
+turnRight dir =
+  case dir of
+    N  -> NE
+    NE -> E
+    E  -> SE
+    SE -> S
+    S  -> SW
+    SW -> W
+    W  -> NW
+    NW -> N
