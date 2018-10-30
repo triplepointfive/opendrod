@@ -46,15 +46,15 @@ init () =
         [ [Wall, Wall, Wall, Wall]
         , [Wall, Floor, Floor, Wall]
         , [Wall, Floor, Floor, Wall]
-        , [Wall, Floor, Wall, Wall]
         , [Wall, Floor, Floor, Wall]
         , [Wall, Floor, Floor, Wall]
-        , [Wall, Wall, Floor, Wall]
+        , [Wall, Floor, Floor, Wall]
+        , [Wall, Floor, Floor, Wall]
         , [Wall, Floor, Floor, Wall]
         , [Wall, Floor, Floor, Wall]
         , [Wall, Wall, Wall, Wall]
         ]
-    , creatures = [34]
+    , creatures = [29, 30, 33, 34, 25, 26]
     , swordPos = 6
     , playerCoord = 5
     , playerDir = E
@@ -76,22 +76,22 @@ update msg model =
       )
 
     KeyPress "j" ->
-      ( withAction (moveDir S) model, Cmd.none )
+      ( withAction (playerMoveDir S) model, Cmd.none )
     KeyPress "k" ->
-      ( withAction (moveDir N) model, Cmd.none)
+      ( withAction (playerMoveDir N) model, Cmd.none)
     KeyPress "l" ->
-      ( withAction (moveDir E) model, Cmd.none )
+      ( withAction (playerMoveDir E) model, Cmd.none )
     KeyPress "h" ->
-      ( withAction (moveDir W) model, Cmd.none)
+      ( withAction (playerMoveDir W) model, Cmd.none)
 
     KeyPress "y" ->
-      ( withAction (moveDir NW) model, Cmd.none )
+      ( withAction (playerMoveDir NW) model, Cmd.none )
     KeyPress "u" ->
-      ( withAction (moveDir NE) model , Cmd.none)
+      ( withAction (playerMoveDir NE) model , Cmd.none)
     KeyPress "b" ->
-      ( withAction (moveDir SW) model, Cmd.none )
+      ( withAction (playerMoveDir SW) model, Cmd.none )
     KeyPress "n" ->
-      ( withAction (moveDir SE) model , Cmd.none)
+      ( withAction (playerMoveDir SE) model , Cmd.none)
 
     _ ->
       ( model
@@ -105,7 +105,7 @@ withAction action model =
     List.foldl
       (\creature md -> isAlivePlayer <| creatureTurn creature md)
       actualModel
-      actualModel.creatures
+      <| List.sortBy (squareDistanceToPlayer actualModel) actualModel.creatures
 
 creatureTurn : Creature -> Model -> Model
 creatureTurn creature model =
@@ -119,7 +119,11 @@ roachAI coord model =
     then
       let dx = (modBy w model.playerCoord) - (modBy w coord)
           dy = w * sign ((model.playerCoord // w) - (coord // w))
-          directMoves = List.map ((+) coord) <| List.reverse <| List.sortBy abs <| [dx + dy, dy, dx]
+          directMoves =
+            List.map ((+) coord)
+              <| List.reverse
+              <| List.sortBy abs
+              <| [dx + dy, dy, dx]
           newCoord =
             case List.filter (\ i -> canMoveTo i model) directMoves of
               freeCoord :: _ -> freeCoord
@@ -153,19 +157,23 @@ turn : (Dir -> Dir) -> Model -> Model
 turn newDir model =
   { model | playerDir = newDir model.playerDir }
 
-moveDir : Dir -> Model -> Model
-moveDir dir model =
+playerMoveDir : Dir -> Model -> Model
+playerMoveDir dir model =
   let destPos = dirCoord model.playerCoord dir
   in
-    if canMoveTo destPos model
+    if canPlayerMoveTo destPos model
     then { model | playerCoord = destPos }
     else model
 
 canMoveTo : Coord -> Model -> Bool
 canMoveTo coord model =
+  canPlayerMoveTo coord model && model.swordPos /= coord
+
+canPlayerMoveTo : Coord -> Model -> Bool
+canPlayerMoveTo coord model =
   case Array.get coord model.blueprint of
     Nothing -> False
-    Just Floor -> True
+    Just Floor -> List.isEmpty <| List.filter ((==) coord) model.creatures
     Just Wall -> False
       -- TODO: Check nobody is here
 
@@ -261,3 +269,12 @@ sign x =
 
 toCoords : Int -> (Int, Int)
 toCoords i = (modBy w i , i // w)
+
+squareDistanceToPlayer : Model -> Creature -> Int
+squareDistanceToPlayer model coords =
+  let
+    (px, py) = toCoords model.playerCoord
+    (x, y) = toCoords coords
+    (dx, dy) = (px - x, py - y)
+  in
+    dx * dx + dy * dy
