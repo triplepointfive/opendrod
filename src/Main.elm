@@ -3,6 +3,7 @@ import Browser
 import Browser.Events exposing (onKeyDown)
 import Json.Decode as Decode
 import Html exposing (..)
+import Html.Attributes exposing (href)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 
@@ -193,35 +194,54 @@ view model =
     , svg
         [ width "500", height "500", viewBox "0 0 500 500" ]
         (
-          Array.toList (Array.indexedMap (tileTag model) model.blueprint)
+          List.concat
+            <| Array.toList (Array.indexedMap (tileTags model) model.blueprint)
         )
       ]
     ]
 
-tileTag : Model -> Coord -> Tile -> Html Msg
-tileTag ({ swordPos, playerCoord, playerDir, creatures }) i tag =
-  let
-    symbol
-      = if List.member i creatures
-        then "0"
-        else if swordPos == i
-          then "-"
-          else
-            if playerCoord == i
-            then "@"
-            else
-              if tag == Floor
-              then " "
-              else "＃"
-  in
-    text_
-      [ x (String.fromInt ((modBy w i) * 20))
-      , y (String.fromInt ((1 + i // w) * 20))
-      , fill "red"
-      ]
+tileTags : Model -> Coord -> Tile -> List (Html Msg)
+tileTags model i tag =
+  tileBackground i tag ++ tileObjects i model
 
-      [ Svg.text symbol
+tileBackground : Coord -> Tile -> List (Html Msg)
+tileBackground i tile =
+  let
+    pos = case tile of
+      Floor -> "64 224 32 32"
+      Wall -> "0 32 32 32"
+  in
+    [ svg
+      [ x (String.fromInt ((modBy w i) * 32))
+      , y (String.fromInt ((i // w) * 32))
+      , width "32"
+      , height "32"
+      , viewBox pos
       ]
+      [ Svg.image [ xlinkHref "/underworld_load/underworld_load-lomem-32x32.png" ] []]
+    ]
+
+tileObjects : Coord -> Model -> List (Html Msg)
+tileObjects i model =
+  let
+    atlas pos =
+      svg
+        [ x (String.fromInt ((modBy w i) * 32))
+        , y (String.fromInt ((i // w) * 32))
+        , width "32"
+        , height "32"
+        , viewBox pos
+        ]
+        [ Svg.image [ xlinkHref "/underworld_load/underworld_load-atlas-32x32.png" ] []]
+  in
+    if List.member i model.creatures
+       then [ atlas "0 256 32 32" ]
+       else if model.swordPos == i
+         then [ atlas "256 480 32 32" ]
+         else
+           if model.playerCoord == i
+           then [ atlas "192 128 32 32" ]
+           else []
 
 dirCoord : Coord -> Dir -> Coord
 dirCoord coord dir =
