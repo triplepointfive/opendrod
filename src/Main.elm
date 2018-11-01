@@ -18,7 +18,7 @@ main = Browser.element
 
 type alias Coord = Int
 
-type Tile = Wall | Floor
+type Tile = Wall | Floor | Orb | Checkpoint
 
 type alias Creature = Coord
 
@@ -35,6 +35,8 @@ type alias Model =
   , playerAlive : Bool
   , animationTick : Int
   , backsteps : List Level
+  , checkpoints : List Level
+  , justLoaded : Bool
   }
 
 type Dir = N | NE | E | SE | S | SW | W | NW
@@ -54,11 +56,11 @@ init () =
           <| List.concat
             [ [Wall, Wall, Wall, Wall]
             , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Checkpoint, Wall]
             , [Wall, Floor, Floor, Wall]
             , [Wall, Floor, Floor, Wall]
             , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Checkpoint, Wall]
             , [Wall, Floor, Floor, Wall]
             , [Wall, Floor, Floor, Wall]
             , [Wall, Wall, Wall, Wall]
@@ -98,6 +100,8 @@ init () =
     , playerAlive = True
     , animationTick = 0
     , backsteps = []
+    , checkpoints = [level]
+    , justLoaded = False
     }
   , Cmd.none
   )
@@ -108,6 +112,7 @@ update msg model =
     Tick -> ( tick model , Cmd.none )
 
     KeyPress "Backspace" -> ( undo model , Cmd.none )
+    KeyPress "r" -> ( loadCheckpoint model , Cmd.none )
 
     KeyPress "q" -> ( withAction (turn dirLeft) model , Cmd.none )
     KeyPress "w" -> ( withAction (turn dirRight) model , Cmd.none )
@@ -135,6 +140,19 @@ undo model =
       }
     _ -> model
 
+loadCheckpoint : Model -> Model
+loadCheckpoint model =
+  case model.checkpoints of
+    x :: xs ->
+      { model
+      | level = x
+      , checkpoints = xs
+      , justLoaded = True
+      , playerAlive = True
+      }
+
+    _ -> model
+
 tick : Model -> Model
 tick model =
   { model
@@ -148,12 +166,33 @@ withAction action model =
       onLevel checkSword
       <| isAlivePlayer
       <| onLevel (buildSwordPos << action)
-      { model | backsteps = [model.level] }
+      { model
+      | backsteps = [model.level]
+      , checkpoints = if model.justLoaded then model.level :: model.checkpoints else model.checkpoints
+      , justLoaded = False
+      }
+
+    afterActionModel =
+      List.foldl
+        (\creature md -> isAlivePlayer <| creatureTurn creature md)
+        actualModel
+        <| List.sortBy
+            (squareDistanceToPlayer actualModel)
+            actualModel.level.creatures
   in
-    List.foldl
-      (\creature md -> isAlivePlayer <| creatureTurn creature md)
-      actualModel
-      <| List.sortBy (squareDistanceToPlayer actualModel) actualModel.level.creatures
+    if afterActionModel.level.playerCoord == model.level.playerCoord
+      then afterActionModel
+      else postProcessTile afterActionModel
+
+postProcessTile : Model -> Model
+postProcessTile model =
+  case Array.get model.level.playerCoord model.level.blueprint of
+    Just Checkpoint ->
+      { model
+      | checkpoints = model.level :: model.checkpoints
+      }
+
+    _ -> model
 
 creatureTurn : Creature -> Model -> Model
 creatureTurn creature model =
@@ -225,10 +264,15 @@ canMoveTo coord level =
 
 canPlayerMoveTo : Coord -> Level -> Bool
 canPlayerMoveTo coord level =
+  let
+    isUntaken = List.isEmpty <| List.filter ((==) coord) level.creatures
+  in
   case Array.get coord level.blueprint of
     Nothing -> False
-    Just Floor -> List.isEmpty <| List.filter ((==) coord) level.creatures
+    Just Floor -> isUntaken
     Just Wall -> False
+    Just Orb -> False
+    Just Checkpoint -> isUntaken
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -255,30 +299,47 @@ view model =
     ]
 
 tileTags : Model -> Coord -> Tile -> List (Html Msg)
-tileTags model i tag =
-  tileBackground i tag ++ tileObjects i model
+tileTags model i tag = tileBackground i tag ++ tileObjects i model
 
 tileBackground : Coord -> Tile -> List (Html Msg)
 tileBackground i tile =
   let
-    pos = case tile of
-      Floor ->
+    background =
+      even
+        (modBy 2 (i + even (i // w ) 0 1))
+        "192 160 32 32"
+        "192 128 32 32"
 
-        even
-          (modBy 2 (i + even (i // w ) 0 1))
-          "192 160 32 32"
-          "192 128 32 32"
+    backgroundBox = case tile of
+      Floor -> background
       Wall -> "0 32 32 32"
+      Orb -> background
+      Checkpoint -> background
+
+    tileItems = case tile of
+      Floor -> []
+      Wall -> []
+      Orb -> []
+      Checkpoint ->
+        [ svg
+          [ x (String.fromInt ((modBy w i) * 32))
+          , y (String.fromInt ((i // w) * 32))
+          , width "32"
+          , height "32"
+          , viewBox "400 400 50 50"
+          ]
+          [ Svg.image [ xlinkHref "/assets/kenney/sheet_white1x.png" ] [] ]
+        ]
   in
     [ svg
       [ x (String.fromInt ((modBy w i) * 32))
       , y (String.fromInt ((i // w) * 32))
       , width "32"
       , height "32"
-      , viewBox pos
+      , viewBox backgroundBox
       ]
-      [ Svg.image [ xlinkHref "/underworld_load/underworld_load-lomem-32x32.png" ] []]
-    ]
+      [ Svg.image [ xlinkHref "/assets/underworld_load/underworld_load-lomem-32x32.png" ] [] ]
+    ] ++ tileItems
 
 tileObjects : Coord -> Model -> List (Html Msg)
 tileObjects i model =
@@ -291,10 +352,13 @@ tileObjects i model =
         , height "32"
         , viewBox pos
         ]
-        [ Svg.image [ xlinkHref "/assets/underworld_load/underworld_load-atlas-32x32.png" ] []]
+        [ Svg.image
+          [ xlinkHref "/assets/underworld_load/underworld_load-atlas-32x32.png" ] []
+        ]
   in
     if List.member i model.level.creatures
-       then [ atlas <| ordered "0 256 32 32" ["32 256 32 32", "64 256 32 32"] model.animationTick ]
+       then [ atlas
+        <| ordered "0 256 32 32" ["32 256 32 32", "64 256 32 32"] model.animationTick ]
        else if model.level.swordPos == i
          then [ atlas "256 480 32 32" ]
          else
