@@ -34,13 +34,14 @@ type alias Model =
   { level : Level
   , playerAlive : Bool
   , animationTick : Int
+  , backsteps : List Level
   }
 
 type Dir = N | NE | E | SE | S | SW | W | NW
 
 -- HTML
 
-type Msg = KeyPress String | Tick
+type Msg = KeyPress String | Tick | Undo
 
 w = 4
 
@@ -96,6 +97,7 @@ init () =
   ( { level = level
     , playerAlive = True
     , animationTick = 0
+    , backsteps = []
     }
   , Cmd.none
   )
@@ -104,6 +106,8 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
     Tick -> ( tick model , Cmd.none )
+
+    KeyPress "Backspace" -> ( undo model , Cmd.none )
 
     KeyPress "q" -> ( withAction (turn dirLeft) model , Cmd.none )
     KeyPress "w" -> ( withAction (turn dirRight) model , Cmd.none )
@@ -120,6 +124,17 @@ update msg model =
 
     _ -> ( model , Cmd.none )
 
+undo : Model -> Model
+undo model =
+  case model.backsteps of
+    x :: xs ->
+      { model
+      | level = x
+      , backsteps = xs
+      , playerAlive = True -- TODO: Consider moving to level
+      }
+    _ -> model
+
 tick : Model -> Model
 tick model =
   { model
@@ -128,7 +143,12 @@ tick model =
 
 withAction : (Level -> Level) -> Model -> Model
 withAction action model =
-  let actualModel = onLevel checkSword <| isAlivePlayer <| onLevel (buildSwordPos << action) model
+  let
+    actualModel =
+      onLevel checkSword
+      <| isAlivePlayer
+      <| onLevel (buildSwordPos << action)
+      { model | backsteps = [model.level] }
   in
     List.foldl
       (\creature md -> isAlivePlayer <| creatureTurn creature md)
