@@ -22,12 +22,16 @@ type Tile = Wall | Floor
 
 type alias Creature = Coord
 
-type alias Model =
+type alias Level =
   { blueprint : Array.Array Tile
   , creatures : List Creature
   , swordPos : Coord
   , playerCoord : Coord
   , playerDir : Dir
+  }
+
+type alias Model =
+  { level : Level
   , playerAlive : Bool
   , animationTick : Int
   }
@@ -42,24 +46,29 @@ w = 4
 
 init : () -> ( Model, Cmd.Cmd Msg )
 init () =
-  ( { blueprint =
-    Array.fromList
-      <| List.concat
-        [ [Wall, Wall, Wall, Wall]
-        , [Wall, Floor, Floor, Wall]
-        , [Wall, Floor, Floor, Wall]
-        , [Wall, Floor, Floor, Wall]
-        , [Wall, Floor, Floor, Wall]
-        , [Wall, Floor, Floor, Wall]
-        , [Wall, Floor, Floor, Wall]
-        , [Wall, Floor, Floor, Wall]
-        , [Wall, Floor, Floor, Wall]
-        , [Wall, Wall, Wall, Wall]
-        ]
-    , creatures = [29, 30, 33, 34, 25, 26]
-    , swordPos = 6
-    , playerCoord = 5
-    , playerDir = E
+  let
+    level =
+      { blueprint =
+        Array.fromList
+          <| List.concat
+            [ [Wall, Wall, Wall, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Wall, Wall, Wall]
+            ]
+      , creatures = [29, 30, 33, 34, 25, 26]
+      , swordPos = 6
+      , playerCoord = 5
+      , playerDir = E
+      }
+  in
+  ( { level = level
     , playerAlive = True
     , animationTick = 0
     }
@@ -92,84 +101,89 @@ tick model =
   | animationTick = model.animationTick + 1
   }
 
-withAction : (Model -> Model) -> Model -> Model
+withAction : (Level -> Level) -> Model -> Model
 withAction action model =
-  let actualModel = checkSword <| isAlivePlayer <| buildSwordPos <| action model
+  let actualModel = onLevel checkSword <| isAlivePlayer <| onLevel (buildSwordPos << action) model
   in
     List.foldl
       (\creature md -> isAlivePlayer <| creatureTurn creature md)
       actualModel
-      <| List.sortBy (squareDistanceToPlayer actualModel) actualModel.creatures
+      <| List.sortBy (squareDistanceToPlayer actualModel) actualModel.level.creatures
 
 creatureTurn : Creature -> Model -> Model
 creatureTurn creature model =
   if model.playerAlive
-    then roachAI creature model
+    then onLevel (roachAI creature) model
     else model
 
-roachAI : Creature -> Model -> Model
-roachAI coord model =
-  if List.member coord model.creatures
+onLevel : (Level -> Level) -> Model -> Model
+onLevel f model =
+  { model
+  | level = f model.level
+  }
+
+roachAI : Creature -> Level -> Level
+roachAI coord level =
+  if List.member coord level.creatures
     then
-      let dx = (modBy w model.playerCoord) - (modBy w coord)
-          dy = w * sign ((model.playerCoord // w) - (coord // w))
+      let dx = (modBy w level.playerCoord) - (modBy w coord)
+          dy = w * sign ((level.playerCoord // w) - (coord // w))
           directMoves =
             List.map ((+) coord)
               <| List.reverse
               <| List.sortBy abs
               <| [dx + dy, dy, dx]
           newCoord =
-            case List.filter (\ i -> canMoveTo i model) directMoves of
+            case List.filter (\ i -> canMoveTo i level) directMoves of
               freeCoord :: _ -> freeCoord
               _ -> coord
       in
-      { model
-      | creatures = newCoord :: List.filter ((/=) coord) model.creatures
+      { level
+      | creatures = newCoord :: List.filter ((/=) coord) level.creatures
       }
     else
-      model
+      level
 
-buildSwordPos : Model -> Model
-buildSwordPos model =
-  { model
-  | swordPos = dirCoord model.playerCoord model.playerDir
+buildSwordPos : Level -> Level
+buildSwordPos level =
+  { level
+  | swordPos = dirCoord level.playerCoord level.playerDir
   }
 
-checkSword : Model -> Model
-checkSword model =
-  { model
-  | creatures = List.filter ((/=) model.swordPos) model.creatures
+checkSword : Level -> Level
+checkSword level =
+  { level
+  | creatures = List.filter ((/=) level.swordPos) level.creatures
   }
 
 isAlivePlayer : Model -> Model
 isAlivePlayer model =
   { model
-  | playerAlive = List.all ((/=) model.playerCoord) model.creatures
+  | playerAlive = List.all ((/=) model.level.playerCoord) model.level.creatures
   }
 
-turn : (Dir -> Dir) -> Model -> Model
-turn newDir model =
-  { model | playerDir = newDir model.playerDir }
+turn : (Dir -> Dir) -> Level -> Level
+turn newDir level =
+  { level | playerDir = newDir level.playerDir }
 
-playerMoveDir : Dir -> Model -> Model
-playerMoveDir dir model =
-  let destPos = dirCoord model.playerCoord dir
+playerMoveDir : Dir -> Level -> Level
+playerMoveDir dir level =
+  let destPos = dirCoord level.playerCoord dir
   in
-    if canPlayerMoveTo destPos model
-    then { model | playerCoord = destPos }
-    else model
+    if canPlayerMoveTo destPos level
+    then { level | playerCoord = destPos }
+    else level
 
-canMoveTo : Coord -> Model -> Bool
-canMoveTo coord model =
-  canPlayerMoveTo coord model && model.swordPos /= coord
+canMoveTo : Coord -> Level -> Bool
+canMoveTo coord level =
+  canPlayerMoveTo coord level && level.swordPos /= coord
 
-canPlayerMoveTo : Coord -> Model -> Bool
-canPlayerMoveTo coord model =
-  case Array.get coord model.blueprint of
+canPlayerMoveTo : Coord -> Level -> Bool
+canPlayerMoveTo coord level =
+  case Array.get coord level.blueprint of
     Nothing -> False
-    Just Floor -> List.isEmpty <| List.filter ((==) coord) model.creatures
+    Just Floor -> List.isEmpty <| List.filter ((==) coord) level.creatures
     Just Wall -> False
-      -- TODO: Check nobody is here
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -191,7 +205,7 @@ view model =
         [ width "500", height "500", viewBox "0 0 500 500" ]
         (
           List.concat
-            <| Array.toList (Array.indexedMap (tileTags model) model.blueprint)
+            <| Array.toList (Array.indexedMap (tileTags model) model.level.blueprint)
         )
       ]
     ]
@@ -228,14 +242,14 @@ tileObjects i model =
         , height "32"
         , viewBox pos
         ]
-        [ Svg.image [ xlinkHref "/underworld_load/underworld_load-atlas-32x32.png" ] []]
+        [ Svg.image [ xlinkHref "/assets/underworld_load/underworld_load-atlas-32x32.png" ] []]
   in
-    if List.member i model.creatures
+    if List.member i model.level.creatures
        then [ atlas <| ordered "0 256 32 32" ["32 256 32 32", "64 256 32 32"] model.animationTick ]
-       else if model.swordPos == i
+       else if model.level.swordPos == i
          then [ atlas "256 480 32 32" ]
          else
-           if model.playerCoord == i
+           if model.level.playerCoord == i
            then [ atlas "192 128 32 32" ]
            else []
 
@@ -281,7 +295,7 @@ toCoords i = (modBy w i , i // w)
 squareDistanceToPlayer : Model -> Creature -> Int
 squareDistanceToPlayer model coords =
   let
-    (px, py) = toCoords model.playerCoord
+    (px, py) = toCoords model.level.playerCoord
     (x, y) = toCoords coords
     (dx, dy) = (px - x, py - y)
   in
