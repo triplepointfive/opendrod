@@ -45,7 +45,7 @@ type Dir = N | NE | E | SE | S | SW | W | NW
 
 type Msg = KeyPress String | Tick | Undo
 
-w = 4
+w = 5
 
 init : () -> ( Model, Cmd.Cmd Msg )
 init () =
@@ -54,46 +54,21 @@ init () =
       { blueprint =
         Array.fromList
           <| List.concat
-            [ [Wall, Wall, Wall, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Checkpoint, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Checkpoint, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Wall, Wall, Wall]
-
-            , [Wall, Wall, Wall, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Wall, Wall, Wall]
-
-            , [Wall, Wall, Wall, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Wall, Wall, Wall]
-
-            , [Wall, Floor, Floor, Wall]
-            , [Wall, Wall, Wall, Wall]
+            [ [Wall, Wall, Wall, Wall, Wall]
+            , [Wall, Floor, Floor, Floor, Wall]
+            , [Wall, Floor, Checkpoint, Floor, Wall]
+            , [Wall, Floor, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Floor, Wall]
+            , [Wall, Floor, Checkpoint, Floor, Wall]
+            , [Wall, Floor, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Floor, Wall]
+            , [Wall, Wall, Wall, Wall, Wall]
             ]
-      , creatures = [29, 30, 33, 34, 25, 26]
-      , swordPos = 6
-      , playerCoord = 5
-      , playerDir = E
+      , creatures = [16]-- [29, 30, 33, 34, 25, 26]
+      , swordPos = 11
+      , playerCoord = 6
+      , playerDir = S
       }
   in
   ( { level = level
@@ -161,28 +136,31 @@ tick model =
 
 withAction : (Level -> Level) -> Model -> Model
 withAction action model =
-  let
-    actualModel =
-      onLevel checkSword
-      <| isAlivePlayer
-      <| onLevel (buildSwordPos << action)
-      { model
-      | backsteps = [model.level]
-      , checkpoints = if model.justLoaded then model.level :: model.checkpoints else model.checkpoints
-      , justLoaded = False
-      }
+  if model.playerAlive then
+    let
+      actualModel =
+        onLevel checkSword
+        <| isAlivePlayer
+        <| onLevel (buildSwordPos << action)
+        { model
+        | backsteps = [model.level]
+        , checkpoints = if model.justLoaded then model.level :: model.checkpoints else model.checkpoints
+        , justLoaded = False
+        }
 
-    afterActionModel =
-      List.foldl
-        (\creature md -> isAlivePlayer <| creatureTurn creature md)
-        actualModel
-        <| List.sortBy
-            (squareDistanceToPlayer actualModel)
-            actualModel.level.creatures
-  in
-    if afterActionModel.level.playerCoord == model.level.playerCoord
-      then afterActionModel
-      else postProcessTile afterActionModel
+      afterActionModel =
+        List.foldl
+          (\creature md -> isAlivePlayer <| creatureTurn creature md)
+          actualModel
+          <| List.sortBy
+              (squareDistanceToPlayer actualModel.level)
+              actualModel.level.creatures
+    in
+      if afterActionModel.level.playerCoord == model.level.playerCoord
+        then afterActionModel
+        else postProcessTile afterActionModel
+  else
+    model
 
 postProcessTile : Model -> Model
 postProcessTile model =
@@ -210,13 +188,11 @@ roachAI : Creature -> Level -> Level
 roachAI coord level =
   if List.member coord level.creatures
     then
-      let dx = (modBy w level.playerCoord) - (modBy w coord)
+      let dx = sign <| (modBy w level.playerCoord) - (modBy w coord)
           dy = w * sign ((level.playerCoord // w) - (coord // w))
           directMoves =
             List.map ((+) coord)
-              <| List.reverse
-              <| List.sortBy abs
-              <| [dx + dy, dy, dx]
+            <| [dx + dy] ++ (List.reverse <| List.sortBy (squareDistanceToPlayer level) [dy, dx])
           newCoord =
             case List.filter (\ i -> canMoveTo i level) directMoves of
               freeCoord :: _ -> freeCoord
@@ -304,9 +280,11 @@ tileTags model i tag = tileBackground i tag ++ tileObjects i model
 tileBackground : Coord -> Tile -> List (Html Msg)
 tileBackground i tile =
   let
+    (px, py) = toCoords i
+
     background =
       even
-        (modBy 2 (i + even (i // w ) 0 1))
+        ((modBy 2 px) + even py 0 1)
         "192 160 32 32"
         "192 128 32 32"
 
@@ -322,8 +300,8 @@ tileBackground i tile =
       Orb -> []
       Checkpoint ->
         [ svg
-          [ x (String.fromInt ((modBy w i) * 32))
-          , y (String.fromInt ((i // w) * 32))
+          [ x (String.fromInt (px * 32))
+          , y (String.fromInt (py * 32))
           , width "32"
           , height "32"
           , viewBox "400 400 50 50"
@@ -405,10 +383,10 @@ dirRight dir =
 toCoords : Int -> (Int, Int)
 toCoords i = (modBy w i , i // w)
 
-squareDistanceToPlayer : Model -> Creature -> Int
-squareDistanceToPlayer model coords =
+squareDistanceToPlayer : Level -> Creature -> Int
+squareDistanceToPlayer level coords =
   let
-    (px, py) = toCoords model.level.playerCoord
+    (px, py) = toCoords level.playerCoord
     (x, y) = toCoords coords
     (dx, dy) = (px - x, py - y)
   in
