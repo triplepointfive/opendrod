@@ -4,8 +4,10 @@ import Browser.Events exposing (onKeyDown)
 import Json.Decode as Decode
 import Html exposing (..)
 import Html.Attributes exposing (href)
+import Maybe
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
+import Time
 
 main = Browser.element
   { init = init
@@ -14,8 +16,6 @@ main = Browser.element
   , subscriptions = subscriptions
   }
 
-type alias DArray a = Array.Array a
-
 type alias Coord = Int
 
 type Tile = Wall | Floor
@@ -23,19 +23,20 @@ type Tile = Wall | Floor
 type alias Creature = Coord
 
 type alias Model =
-  { blueprint : DArray Tile
+  { blueprint : Array.Array Tile
   , creatures : List Creature
   , swordPos : Coord
   , playerCoord : Coord
   , playerDir : Dir
   , playerAlive : Bool
+  , animationTick : Int
   }
 
 type Dir = N | NE | E | SE | S | SW | W | NW
 
 -- HTML
 
-type Msg = KeyPress String
+type Msg = KeyPress String | Tick
 
 w = 4
 
@@ -60,6 +61,7 @@ init () =
     , playerCoord = 5
     , playerDir = E
     , playerAlive = True
+    , animationTick = 0
     }
   , Cmd.none
   )
@@ -67,37 +69,28 @@ init () =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
-    KeyPress "q" ->
-      ( withAction (turn dirLeft) model
-      , Cmd.none
-      )
-    KeyPress "w" ->
-      ( withAction (turn dirRight) model
-      , Cmd.none
-      )
+    Tick -> ( tick model , Cmd.none )
 
-    KeyPress "j" ->
-      ( withAction (playerMoveDir S) model, Cmd.none )
-    KeyPress "k" ->
-      ( withAction (playerMoveDir N) model, Cmd.none)
-    KeyPress "l" ->
-      ( withAction (playerMoveDir E) model, Cmd.none )
-    KeyPress "h" ->
-      ( withAction (playerMoveDir W) model, Cmd.none)
+    KeyPress "q" -> ( withAction (turn dirLeft) model , Cmd.none )
+    KeyPress "w" -> ( withAction (turn dirRight) model , Cmd.none )
 
-    KeyPress "y" ->
-      ( withAction (playerMoveDir NW) model, Cmd.none )
-    KeyPress "u" ->
-      ( withAction (playerMoveDir NE) model , Cmd.none)
-    KeyPress "b" ->
-      ( withAction (playerMoveDir SW) model, Cmd.none )
-    KeyPress "n" ->
-      ( withAction (playerMoveDir SE) model , Cmd.none)
+    KeyPress "j" -> ( withAction (playerMoveDir S) model, Cmd.none )
+    KeyPress "k" -> ( withAction (playerMoveDir N) model, Cmd.none )
+    KeyPress "l" -> ( withAction (playerMoveDir E) model, Cmd.none )
+    KeyPress "h" -> ( withAction (playerMoveDir W) model, Cmd.none )
 
-    _ ->
-      ( model
-      , Cmd.none
-      )
+    KeyPress "y" -> ( withAction (playerMoveDir NW) model, Cmd.none )
+    KeyPress "u" -> ( withAction (playerMoveDir NE) model , Cmd.none )
+    KeyPress "b" -> ( withAction (playerMoveDir SW) model, Cmd.none )
+    KeyPress "n" -> ( withAction (playerMoveDir SE) model , Cmd.none )
+
+    _ -> ( model , Cmd.none )
+
+tick : Model -> Model
+tick model =
+  { model
+  | animationTick = model.animationTick + 1
+  }
 
 withAction : (Model -> Model) -> Model -> Model
 withAction action model =
@@ -180,7 +173,10 @@ canPlayerMoveTo coord model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  onKeyDown keyDecoder
+  Sub.batch
+    [ onKeyDown keyDecoder
+    , Time.every 500 (const Tick)
+    ]
 
 keyDecoder : Decode.Decoder Msg
 keyDecoder =
@@ -235,7 +231,7 @@ tileObjects i model =
         [ Svg.image [ xlinkHref "/underworld_load/underworld_load-atlas-32x32.png" ] []]
   in
     if List.member i model.creatures
-       then [ atlas "0 256 32 32" ]
+       then [ atlas <| ordered "0 256 32 32" ["32 256 32 32", "64 256 32 32"] model.animationTick ]
        else if model.swordPos == i
          then [ atlas "256 480 32 32" ]
          else
@@ -279,14 +275,6 @@ dirRight dir =
     W  -> NW
     NW -> N
 
-sign : Int -> Int
-sign x =
-  if x > 0
-    then 1
-    else if x < 0
-      then -1
-      else 0
-
 toCoords : Int -> (Int, Int)
 toCoords i = (modBy w i , i // w)
 
@@ -298,3 +286,22 @@ squareDistanceToPlayer model coords =
     (dx, dy) = (px - x, py - y)
   in
     dx * dx + dy * dy
+
+-- Utils
+
+ordered : a -> List a -> Int -> a
+ordered x xs i =
+  case List.drop (modBy (1 + List.length xs) i) xs of
+    a :: _ -> a
+    _ -> x
+
+sign : Int -> Int
+sign x =
+  if x > 0
+    then 1
+    else if x < 0
+      then -1
+      else 0
+
+const : a -> b -> a
+const x _ = x
