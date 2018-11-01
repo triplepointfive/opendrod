@@ -61,6 +61,31 @@ init () =
             , [Wall, Floor, Floor, Wall]
             , [Wall, Floor, Floor, Wall]
             , [Wall, Wall, Wall, Wall]
+
+            , [Wall, Wall, Wall, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Wall, Wall, Wall]
+
+            , [Wall, Wall, Wall, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Wall, Wall, Wall]
+
+            , [Wall, Floor, Floor, Wall]
+            , [Wall, Wall, Wall, Wall]
             ]
       , creatures = [29, 30, 33, 34, 25, 26]
       , swordPos = 6
@@ -200,14 +225,13 @@ keyDecoder =
 view : Model -> Html Msg
 view model =
   div []
-    [ div [] [Html.text <| if model.playerAlive then "" else "Died"
-    , svg
-        [ width "500", height "500", viewBox "0 0 500 500" ]
+    [ svg
+        [ width "1024", height "1024", viewBox "0 0 1024 1024" ]
         (
           List.concat
             <| Array.toList (Array.indexedMap (tileTags model) model.level.blueprint)
         )
-      ]
+    , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
     ]
 
 tileTags : Model -> Coord -> Tile -> List (Html Msg)
