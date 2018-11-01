@@ -262,7 +262,12 @@ tileBackground : Coord -> Tile -> List (Html Msg)
 tileBackground i tile =
   let
     pos = case tile of
-      Floor -> "64 224 32 32"
+      Floor ->
+
+        even
+          (modBy 2 (i + even (i // w ) 0 1))
+          "192 160 32 32"
+          "192 128 32 32"
       Wall -> "0 32 32 32"
   in
     [ svg
@@ -363,3 +368,7 @@ sign x =
 
 const : a -> b -> a
 const x _ = x
+
+even : Int -> a -> a -> a
+even i t f =
+  if modBy 2 i == 0 then t else f
