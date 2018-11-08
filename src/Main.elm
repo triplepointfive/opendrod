@@ -9,31 +9,14 @@ import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Time
 
+import Level exposing (..)
+import Utils exposing (..)
+
 main = Browser.element
   { init = init
   , update = update
   , view = view
   , subscriptions = subscriptions
-  }
-
-type alias Coord = Int
-
-type alias ObsticalId = Int
-
-type ObsticalState = Pushed | InGround
-
-type OrbAction = Close | Toggle | Open
-
-type Tile = Wall | Floor | Orb (List (ObsticalId, OrbAction)) | Checkpoint | Obstical ObsticalId ObsticalState
-
-type alias Creature = Coord
-
-type alias Level =
-  { blueprint : Array.Array Tile
-  , creatures : List Creature
-  , swordPos : Coord
-  , playerCoord : Coord
-  , playerDir : Dir
   }
 
 type alias Model =
@@ -44,8 +27,6 @@ type alias Model =
   , checkpoints : List Level
   , justLoaded : Bool
   }
-
-type Dir = N | NE | E | SE | S | SW | W | NW
 
 -- HTML
 
@@ -75,10 +56,11 @@ init () =
             , [Wall, Wall, Floor, Wall, Wall]
             , [Wall, Wall, Wall, Wall, Wall]
             ]
-      , creatures = [] -- [29, 30, 33, 34, 25, 26]
+      , creatures = [42] -- [29, 30, 33, 34, 25, 26]
       , swordPos = 11
       , playerCoord = 6
       , playerDir = S
+      , width = 5
       }
   in
   ( { level = level
@@ -144,6 +126,12 @@ tick model =
   | animationTick = model.animationTick + 1
   }
 
+creatureTurn : Creature -> Model -> Model
+creatureTurn creature model =
+  if model.playerAlive
+    then onLevel (roachAI creature) model
+    else model
+
 withAction : (Level -> Level) -> Model -> Model
 withAction action model =
   if model.playerAlive then
@@ -154,7 +142,10 @@ withAction action model =
         <| onLevel (buildSwordPos << action)
         { model
         | backsteps = [model.level]
-        , checkpoints = if model.justLoaded then model.level :: model.checkpoints else model.checkpoints
+        , checkpoints =
+          if model.justLoaded
+            then model.level :: model.checkpoints
+            else model.checkpoints
         , justLoaded = False
         }
 
@@ -182,110 +173,17 @@ postProcessTile model =
 
     _ -> model
 
-creatureTurn : Creature -> Model -> Model
-creatureTurn creature model =
-  if model.playerAlive
-    then onLevel (roachAI creature) model
-    else model
-
 onLevel : (Level -> Level) -> Model -> Model
 onLevel f model =
   { model
   | level = f model.level
   }
 
-roachAI : Creature -> Level -> Level
-roachAI coord level =
-  if List.member coord level.creatures
-    then
-      let dx = sign <| (modBy w level.playerCoord) - (modBy w coord)
-          dy = w * sign ((level.playerCoord // w) - (coord // w))
-          directMoves =
-            List.map ((+) coord)
-            <| [dx + dy] ++ (List.reverse <| List.sortBy (squareDistanceToPlayer level) [dy, dx])
-          newCoord =
-            case List.filter (\ i -> canMoveTo i level) directMoves of
-              freeCoord :: _ -> freeCoord
-              _ -> coord
-      in
-      { level
-      | creatures = newCoord :: List.filter ((/=) coord) level.creatures
-      }
-    else
-      level
-
-buildSwordPos : Level -> Level
-buildSwordPos level =
-  { level
-  | swordPos = dirCoord level.playerCoord level.playerDir
-  }
-
-checkSword : Level -> Level
-checkSword = swordToggle << swordKill
-
-swordKill : Level -> Level
-swordKill level =
-  { level
-  | creatures = List.filter ((/=) level.swordPos) level.creatures
-  }
-
-swordToggle : Level -> Level
-swordToggle level =
-  case Array.get level.swordPos level.blueprint of
-    Just (Orb actions) ->
-      { level
-      | blueprint = Array.map (orbAction actions) level.blueprint
-      }
-    _ -> level
-
-orbAction : List (ObsticalId, OrbAction) -> Tile -> Tile
-orbAction actions tile =
-  case tile of
-    Obstical id state ->
-      case List.filter (\(i, _) -> i == id) actions of
-        (_, action) :: _ ->
-          case action of
-            Close -> Obstical id Pushed
-            Open -> Obstical id InGround
-            Toggle -> Obstical id (if state == Pushed then InGround else Pushed)
-        _ -> tile
-    _ -> tile
-
 isAlivePlayer : Model -> Model
 isAlivePlayer model =
   { model
   | playerAlive = List.all ((/=) model.level.playerCoord) model.level.creatures
   }
-
-turn : (Dir -> Dir) -> Level -> Level
-turn newDir level =
-  { level | playerDir = newDir level.playerDir }
-
-playerMoveDir : Dir -> Level -> Level
-playerMoveDir dir level =
-  let destPos = dirCoord level.playerCoord dir
-  in
-    if canPlayerMoveTo destPos level
-    then { level | playerCoord = destPos }
-    else level
-
-canMoveTo : Coord -> Level -> Bool
-canMoveTo coord level =
-  canPlayerMoveTo coord level && level.swordPos /= coord
-
-canPlayerMoveTo : Coord -> Level -> Bool
-canPlayerMoveTo coord level =
-  let
-    isUntaken = List.isEmpty <| List.filter ((==) coord) level.creatures
-  in
-  case Array.get coord level.blueprint of
-    Nothing -> False
-    Just Floor -> isUntaken
-    Just Wall -> False
-    Just (Orb _) -> False
-    Just Checkpoint -> isUntaken
-    Just (Obstical _ Pushed) -> False
-    Just (Obstical _ InGround) -> isUntaken
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -312,12 +210,12 @@ view model =
     ]
 
 tileTags : Model -> Coord -> Tile -> List (Html Msg)
-tileTags model i tag = tileBackground i tag ++ tileObjects i model
+tileTags model i tag = tileBackground model.level.width i tag ++ tileObjects i model
 
-tileBackground : Coord -> Tile -> List (Html Msg)
-tileBackground i tile =
+tileBackground : Int -> Coord -> Tile -> List (Html Msg)
+tileBackground widht i tile =
   let
-    (px, py) = toCoords i
+    (px, py) = toCoords widht i
 
     background =
       even
@@ -337,15 +235,7 @@ tileBackground i tile =
       Floor -> []
       Wall -> []
       Orb _ ->
-        [ svg
-          [ x (String.fromInt (px * 32))
-          , y (String.fromInt (py * 32))
-          , width "32"
-          , height "32"
-          , viewBox "320 320 32 32"
-          ]
-          [ Svg.image [ xlinkHref "/assets/underworld_load/underworld_load-atlas-32x32.png" ] [] ]
-        ]
+        [ imgTile i (10, 10) "atlas" ]
       Checkpoint ->
         [ svg
           [ x (String.fromInt (px * 32))
@@ -357,25 +247,9 @@ tileBackground i tile =
           [ Svg.image [ xlinkHref "/assets/kenney/sheet_white1x.png" ] [] ]
         ]
       Obstical _ InGround ->
-        [ svg
-          [ x (String.fromInt (px * 32))
-          , y (String.fromInt (py * 32))
-          , width "32"
-          , height "32"
-          , viewBox "224 384 32 32"
-          ]
-          [ Svg.image [ xlinkHref "/assets/underworld_load/underworld_load-atlas-32x32.png" ] [] ]
-        ]
+        [ imgTile i (7, 12) "atlas" ]
       Obstical _ Pushed ->
-        [ svg
-          [ x (String.fromInt (px * 32))
-          , y (String.fromInt (py * 32))
-          , width "32"
-          , height "32"
-          , viewBox "256 384 32 32"
-          ]
-          [ Svg.image [ xlinkHref "/assets/underworld_load/underworld_load-atlas-32x32.png" ] [] ]
-        ]
+        [ imgTile i (8, 12) "atlas" ]
   in
     [ svg
       [ x (String.fromInt ((modBy w i) * 32))
@@ -389,96 +263,25 @@ tileBackground i tile =
 
 tileObjects : Coord -> Model -> List (Html Msg)
 tileObjects i model =
-  let
-    atlas pos =
-      svg
-        [ x (String.fromInt ((modBy w i) * 32))
-        , y (String.fromInt ((i // w) * 32))
-        , width "32"
-        , height "32"
-        , viewBox pos
-        ]
-        [ Svg.image
-          [ xlinkHref "/assets/underworld_load/underworld_load-atlas-32x32.png" ] []
-        ]
-  in
-    if List.member i model.level.creatures
-       then [ atlas
-        <| ordered "0 256 32 32" ["32 256 32 32", "64 256 32 32"] model.animationTick ]
-       else if model.level.swordPos == i
-         then [ atlas "256 480 32 32" ]
-         else
-           if model.level.playerCoord == i
-           then [ atlas "192 128 32 32" ]
-           else []
+  if List.member i model.level.creatures
+    then
+    [ imgTile i (cycle (0, 8) [(1, 8), (2, 8)] model.animationTick) "atlas" ]
+    else if model.level.swordPos == i
+      then [ imgTile i (8, 15) "atlas" ]
+      else
+        if model.level.playerCoord == i
+        then [ imgTile i (6, 4) "atlas" ]
+        else []
 
-dirCoord : Coord -> Dir -> Coord
-dirCoord coord dir =
-  coord + case dir of
-    N  -> -w
-    NE -> 1 - w
-    E  -> 1
-    SE -> w + 1
-    S  -> w
-    SW -> w - 1
-    W  -> -1
-    NW -> -w - 1
-
-dirLeft : Dir -> Dir
-dirLeft dir =
-  case dir of
-    N  -> NW
-    NE -> N
-    E  -> NE
-    SE -> E
-    S  -> SE
-    SW -> S
-    W  -> SW
-    NW -> W
-
-dirRight : Dir -> Dir
-dirRight dir =
-  case dir of
-    N  -> NE
-    NE -> E
-    E  -> SE
-    SE -> S
-    S  -> SW
-    SW -> W
-    W  -> NW
-    NW -> N
-
-toCoords : Int -> (Int, Int)
-toCoords i = (modBy w i , i // w)
-
-squareDistanceToPlayer : Level -> Creature -> Int
-squareDistanceToPlayer level coords =
-  let
-    (px, py) = toCoords level.playerCoord
-    (x, y) = toCoords coords
-    (dx, dy) = (px - x, py - y)
-  in
-    dx * dx + dy * dy
-
--- Utils
-
-ordered : a -> List a -> Int -> a
-ordered x xs i =
-  case List.drop (modBy (1 + List.length xs) i) xs of
-    a :: _ -> a
-    _ -> x
-
-sign : Int -> Int
-sign x =
-  if x > 0
-    then 1
-    else if x < 0
-      then -1
-      else 0
-
-const : a -> b -> a
-const x _ = x
-
-even : Int -> a -> a -> a
-even i t f =
-  if modBy 2 i == 0 then t else f
+imgTile : Coord -> (Int, Int) -> String -> Html Msg
+imgTile i (px, py) file =
+  svg
+    [ x (String.fromInt ((modBy w i) * 32))
+    , y (String.fromInt ((i // w) * 32))
+    , width "32"
+    , height "32"
+    , viewBox (String.fromInt (32 * px) ++ " " ++ String.fromInt (32 * py) ++ " 32 32")
+    ]
+    [ Svg.image
+      [ xlinkHref "/assets/underworld_load/underworld_load-atlas-32x32.png" ] []
+    ]
