@@ -241,6 +241,7 @@ view model =
     [ svg
         [ width "1024", height "1024", viewBox "0 0 1024 1024" ]
         (
+          (rect [ x "0", y "0", width "1024", height "1024", fill "grey" ] []) ::
           List.concat (Array.toList (Array.indexedMap (tileTags model) model.level.blueprint))
           ++ activeEffects model
         )
@@ -248,7 +249,9 @@ view model =
     ]
 
 tileTags : Model -> Coord -> Tile -> List (Html Msg)
-tileTags model i tag = tileBackground model i tag ++ tileObjects i model
+tileTags model i tag =
+  tileBackground model i tag ++
+    tileObjects i model
 
 tileBackground : Model -> Coord -> Tile -> List (Html Msg)
 tileBackground model i tile =
@@ -258,7 +261,7 @@ tileBackground model i tile =
     background =
       even ((modBy 2 px) + even py 0 1) (6, 5) (6, 4)
 
-    (tx, ty) = case tile of
+    pos = case tile of
       Floor -> background
       Wall -> Maybe.withDefault background (Array.get i model.wallTiles)
       Orb _ -> background
@@ -290,7 +293,7 @@ tileBackground model i tile =
       Obstical _ Pushed ->
         [ imgTile (px, py) i (8, 12) Atlas ]
   in
-    [ imgTile (px, py) i (tx, ty) tileSet ] ++ tileItems
+    (if pos == (-1, -1) then [] else [ imgTile (px, py) i pos tileSet ]) ++ tileItems
 
 tileObjects : Coord -> Model -> List (Html Msg)
 tileObjects i model =
@@ -335,27 +338,29 @@ activeEffects model =
 buildWalls : Level -> Array.Array (Int, Int)
 buildWalls level =
   let
+    layer = 0
+
     tileToWall coord tile =
       let w dir = Maybe.withDefault Wall (Array.get (dirCoord level.width coord dir) level.blueprint) == Wall
       in
       case tile of
         Wall ->
           case [w N, w NE, w E, w SE, w S, w SW, w W, w NW] of
-            [True, True, True, True, True, True, True, True] -> (0, 2)
+            [True, True, True, True, True, True, True, True] -> (-1, -1)
 
-            [True, True, True, _, False, _, True, True] -> (0, 0)
-            [False, _, True, True, True, True, True, _] -> (0, 0)
+            [True, True, True, _, False, _, True, True] -> (0, layer)
+            [False, _, True, True, True, True, True, _] -> (0, layer)
 
-            [True, _, False, _, True, True, True, True] -> (1, 0)
-            [True, True, True, True, True, _, False, _] -> (1, 0)
+            [True, _, False, _, True, True, True, True] -> (1, layer)
+            [True, True, True, True, True, _, False, _] -> (1, layer)
 
-            [True, False, True, True, True, True, True, True] -> (2, 0)
-            [True, True, True, False, True, True, True, True] -> (3, 0)
-            [True, True, True, True, True, False, True, True] -> (4, 0)
-            [True, True, True, True, True, True, True, False] -> (5, 0)
+            [True, False, True, True, True, True, True, True] -> (2, layer)
+            [True, True, True, False, True, True, True, True] -> (3, layer)
+            [True, True, True, True, True, False, True, True] -> (4, layer)
+            [True, True, True, True, True, True, True, False] -> (5, layer)
 
-            [False, False, False, False, True, True, True, True] -> (4, 0)
-            [False, True, True, True, True, False, False, False] -> (3, 0)
+            [False, False, False, False, True, True, True, True] -> (4, layer)
+            [False, True, True, True, True, False, False, False] -> (3, layer)
 
             _ -> (3, 4)
         _ -> (0, 0)
