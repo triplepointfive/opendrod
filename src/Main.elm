@@ -26,41 +26,66 @@ type alias Model =
   , backsteps : List Level
   , checkpoints : List Level
   , justLoaded : Bool
+  , effect : Maybe Effect
   }
 
--- HTML
+type Effect = TileClicked Tile
 
-type Msg = KeyPress String | Tick | Undo
-
-w = 5
+type Msg = KeyPress String | Tick | Click Tile
 
 init : () -> ( Model, Cmd.Cmd Msg )
 init () =
   let
+    walls = List.repeat 27 Wall
     level =
       { blueprint =
         Array.fromList
           <| List.concat
-            [ [Wall, Wall, Wall, Wall, Wall]
-            , [Wall, Floor, Floor, Orb [(0, Open)], Wall]
-            , [Wall, Floor, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Orb [(1, Toggle), (2, Toggle)], Wall]
-            , [Wall, Floor, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Orb [(2, Close)], Wall]
-            , [Wall, Floor, Floor, Floor, Wall]
-            , [Wall, Wall, Obstical 0 Pushed, Wall, Wall]
-            , [Wall, Wall, Floor, Wall, Wall]
-            , [Wall, Wall, Obstical 1 InGround, Wall, Wall]
-            , [Wall, Wall, Floor, Wall, Wall]
-            , [Wall, Wall, Obstical 2 Pushed, Wall, Wall]
-            , [Wall, Wall, Floor, Wall, Wall]
-            , [Wall, Wall, Wall, Wall, Wall]
+            [ [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Floor, Floor, Orb [(0, Open)], Wall] ++ walls
+            , [Wall, Floor, Floor, Floor, Wall] ++ walls
+            , [Wall, Floor, Floor, Orb [(1, Toggle), (2, Toggle)], Wall] ++ walls
+
+            , [Wall, Floor, Floor, Floor, Wall] ++ walls
+            , [Wall, Floor, Floor, Orb [(2, Close)], Wall] ++ walls
+            , [Wall, Floor, Floor, Floor, Wall] ++ walls
+            , [Wall, Wall, Obstical 0 Pushed, Wall, Wall] ++ walls
+
+            , [Wall, Wall, Floor, Wall, Wall] ++ walls
+            , [Wall, Wall, Obstical 1 InGround, Wall, Wall] ++ walls
+            , [Wall, Wall, Floor, Wall, Wall] ++ walls
+            , [Wall, Wall, Obstical 2 Pushed, Wall, Wall] ++ walls
+
+            , [Wall, Wall, Floor, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+            , [Wall, Wall, Wall, Wall, Wall] ++ walls
             ]
-      , creatures = [42] -- [29, 30, 33, 34, 25, 26]
-      , swordPos = 11
-      , playerCoord = 6
+      , creatures = []
+      , swordPos = 321
+      , playerCoord = 289
       , playerDir = S
-      , width = 5
+      , width = 32
       }
   in
   ( { level = level
@@ -69,6 +94,7 @@ init () =
     , backsteps = []
     , checkpoints = [level]
     , justLoaded = False
+    , effect = Nothing
     }
   , Cmd.none
   )
@@ -94,7 +120,9 @@ update msg model =
     KeyPress "b" -> ( withAction (playerMoveDir SW) model, Cmd.none )
     KeyPress "n" -> ( withAction (playerMoveDir SE) model , Cmd.none )
 
-    _ -> ( model , Cmd.none )
+    KeyPress _ -> ( model, Cmd.none )
+
+    Click tile -> ( addClickTileEffect tile model, Cmd.none )
 
 undo : Model -> Model
 undo model =
@@ -125,6 +153,12 @@ tick model =
   { model
   | animationTick = model.animationTick + 1
   }
+
+addClickTileEffect : Tile -> Model -> Model
+addClickTileEffect tile model =
+  case tile of
+    Orb _ -> { model | effect = Just (TileClicked tile)}
+    _ -> { model | effect = Nothing }
 
 creatureTurn : Creature -> Model -> Model
 creatureTurn creature model =
@@ -203,8 +237,8 @@ view model =
     [ svg
         [ width "1024", height "1024", viewBox "0 0 1024 1024" ]
         (
-          List.concat
-            <| Array.toList (Array.indexedMap (tileTags model) model.level.blueprint)
+          List.concat (Array.toList (Array.indexedMap (tileTags model) model.level.blueprint))
+          ++ activeEffects model
         )
     , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
     ]
@@ -235,7 +269,7 @@ tileBackground widht i tile =
       Floor -> []
       Wall -> []
       Orb _ ->
-        [ imgTile i (10, 10) "atlas" ]
+        [ imgTile (px, py) i (10, 10) "atlas" ]
       Checkpoint ->
         [ svg
           [ x (String.fromInt (px * 32))
@@ -247,13 +281,13 @@ tileBackground widht i tile =
           [ Svg.image [ xlinkHref "/assets/kenney/sheet_white1x.png" ] [] ]
         ]
       Obstical _ InGround ->
-        [ imgTile i (7, 12) "atlas" ]
+        [ imgTile (px, py) i (7, 12) "atlas" ]
       Obstical _ Pushed ->
-        [ imgTile i (8, 12) "atlas" ]
+        [ imgTile (px, py) i (8, 12) "atlas" ]
   in
     [ svg
-      [ x (String.fromInt ((modBy w i) * 32))
-      , y (String.fromInt ((i // w) * 32))
+      [ x (String.fromInt (px * 32))
+      , y (String.fromInt (py * 32))
       , width "32"
       , height "32"
       , viewBox backgroundBox
@@ -263,21 +297,23 @@ tileBackground widht i tile =
 
 tileObjects : Coord -> Model -> List (Html Msg)
 tileObjects i model =
+  let p = toCoords model.level.width i
+  in
   if List.member i model.level.creatures
     then
-    [ imgTile i (cycle (0, 8) [(1, 8), (2, 8)] model.animationTick) "atlas" ]
+    [ imgTile p i (cycle (0, 8) [(1, 8), (2, 8)] model.animationTick) "atlas" ]
     else if model.level.swordPos == i
-      then [ imgTile i (8, 15) "atlas" ]
+      then [ imgTile p i (8, 15) "atlas" ]
       else
         if model.level.playerCoord == i
-        then [ imgTile i (6, 4) "atlas" ]
+        then [ imgTile p i (6, 4) "atlas" ]
         else []
 
-imgTile : Coord -> (Int, Int) -> String -> Html Msg
-imgTile i (px, py) file =
+imgTile : (Int, Int) -> Coord -> (Int, Int) -> String -> Html Msg
+imgTile (ix, iy) i (px, py) file =
   svg
-    [ x (String.fromInt ((modBy w i) * 32))
-    , y (String.fromInt ((i // w) * 32))
+    [ x (String.fromInt (ix * 32))
+    , y (String.fromInt (iy * 32))
     , width "32"
     , height "32"
     , viewBox (String.fromInt (32 * px) ++ " " ++ String.fromInt (32 * py) ++ " 32 32")
@@ -285,3 +321,12 @@ imgTile i (px, py) file =
     [ Svg.image
       [ xlinkHref "/assets/underworld_load/underworld_load-atlas-32x32.png" ] []
     ]
+
+activeEffects : Model -> List (Html Msg)
+activeEffects model =
+  case model.effect of
+    Just (TileClicked (Orb actions)) ->
+      [
+        rect [ x "0", y "0", width "32", height "32", fillOpacity "0.5", fill "yellow" ] []
+      ]
+    _ -> []
