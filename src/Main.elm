@@ -42,51 +42,50 @@ init () =
     walls = List.repeat 27 Wall
     level =
       { blueprint =
-        Array.fromList
-          <| List.concat
-            [ [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Floor, Floor, Orb [(0, Open)], Wall] ++ walls
-            , [Wall, Floor, Floor, Floor, Wall] ++ walls
-            , [Wall, Floor, Floor, Orb [(1, Toggle), (2, Toggle)], Wall] ++ walls
-
-            , [Wall, Floor, Floor, Floor, Wall] ++ walls
-            , [Wall, Floor, Floor, Orb [(2, Close)], Wall] ++ walls
-            , [Wall, Floor, Floor, Floor, Wall] ++ walls
-            , [Wall, Wall, Obstical 0 Pushed, Wall, Wall] ++ walls
-
-            , [Wall, Wall, Floor, Wall, Wall] ++ walls
-            , [Wall, Wall, Obstical 1 InGround, Wall, Wall] ++ walls
-            , [Wall, Wall, Floor, Wall, Wall] ++ walls
-            , [Wall, Wall, Obstical 2 Pushed, Wall, Wall] ++ walls
-
-            , [Wall, Wall, Floor, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
-            , [Wall, Wall, Wall, Wall, Wall] ++ walls
+          buildBlueprint
+            [ "################################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############       #############"
+            , "############       #############"
+            , "############       #############"
+            , "############       #############"
+            , "############       #############"
+            , "############       #############"
+            , "############       #############"
+            , "############       #############"
+            , "############       #############"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            , "############### ################"
+            ]
+            [ (337, Orb [(0, Open)])
+            , (401, Orb [(1, Toggle), (2, Toggle)])
+            , (465, Orb [(2, Close)])
+            , (559, Obstical 0 Pushed)
+            , (623, Obstical 1 InGround)
+            , (687, Obstical 2 Pushed)
             ]
       , creatures = []
-      , swordPos = 321
-      , playerCoord = 289
+      , swordPos = 79
+      , playerCoord = 47
       , playerDir = S
       , width = 32
       }
@@ -359,8 +358,15 @@ buildWalls level =
             [True, True, True, True, True, False, True, True] -> (4, layer)
             [True, True, True, True, True, True, True, False] -> (5, layer)
 
-            [False, False, False, False, True, True, True, True] -> (4, layer)
+            [True, True, True, True, False, False, False, False] -> (2, layer)
             [False, True, True, True, True, False, False, False] -> (3, layer)
+            [False, False, False, False, True, True, True, True] -> (4, layer)
+            [True, False, False, False, False, True, True, True] -> (5, layer)
+
+            [True, True, True, False, False, False, False, False] -> (2, layer)
+            [False, False, True, True, True, False, False, False] -> (3, layer)
+            [False, False, False, False, True, True, True, False] -> (4, layer)
+            [True, False, False, False, False, False, True, True] -> (5, layer)
 
             _ -> (3, 4)
         _ -> (0, 0)

@@ -37,6 +37,18 @@ type alias Level =
 
 type Dir = N | NE | E | SE | S | SW | W | NW
 
+buildBlueprint : List String -> List (Coord, Tile) -> Array.Array Tile
+buildBlueprint walls tiles =
+  let
+    buildTile i char =
+      case List.filter (\(j, _) -> i == j) tiles of
+        (_, t) :: _ -> t
+        _ -> case char of
+                '#' -> Wall
+                _ -> Floor
+  in
+  Array.indexedMap buildTile <| Array.fromList <| List.concatMap String.toList walls
+
 dirCoord : Int -> Coord -> Dir -> Coord
 dirCoord w coord dir =
   coord + case dir of
