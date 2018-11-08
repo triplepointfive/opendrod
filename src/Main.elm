@@ -24,7 +24,7 @@ type ObsticalState = Pushed | InGround
 
 type OrbAction = Close | Toggle | Open
 
-type Tile = Wall | Floor | Orb | Checkpoint | Obstical ObsticalId ObsticalState
+type Tile = Wall | Floor | Orb (List (ObsticalId, OrbAction)) | Checkpoint | Obstical ObsticalId ObsticalState
 
 type alias Creature = Coord
 
@@ -61,14 +61,18 @@ init () =
         Array.fromList
           <| List.concat
             [ [Wall, Wall, Wall, Wall, Wall]
+            , [Wall, Floor, Floor, Orb [(0, Open)], Wall]
             , [Wall, Floor, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Orb [(1, Toggle), (2, Toggle)], Wall]
             , [Wall, Floor, Floor, Floor, Wall]
+            , [Wall, Floor, Floor, Orb [(2, Close)], Wall]
             , [Wall, Floor, Floor, Floor, Wall]
-            , [Wall, Obstical 0 Pushed, Obstical 0 InGround, Obstical 0 Pushed, Wall]
-            , [Wall, Floor, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Floor, Wall]
-            , [Wall, Floor, Floor, Floor, Wall]
+            , [Wall, Wall, Obstical 0 Pushed, Wall, Wall]
+            , [Wall, Wall, Floor, Wall, Wall]
+            , [Wall, Wall, Obstical 1 InGround, Wall, Wall]
+            , [Wall, Wall, Floor, Wall, Wall]
+            , [Wall, Wall, Obstical 2 Pushed, Wall, Wall]
+            , [Wall, Wall, Floor, Wall, Wall]
             , [Wall, Wall, Wall, Wall, Wall]
             ]
       , creatures = [] -- [29, 30, 33, 34, 25, 26]
@@ -217,10 +221,35 @@ buildSwordPos level =
   }
 
 checkSword : Level -> Level
-checkSword level =
+checkSword = swordToggle << swordKill
+
+swordKill : Level -> Level
+swordKill level =
   { level
   | creatures = List.filter ((/=) level.swordPos) level.creatures
   }
+
+swordToggle : Level -> Level
+swordToggle level =
+  case Array.get level.swordPos level.blueprint of
+    Just (Orb actions) ->
+      { level
+      | blueprint = Array.map (orbAction actions) level.blueprint
+      }
+    _ -> level
+
+orbAction : List (ObsticalId, OrbAction) -> Tile -> Tile
+orbAction actions tile =
+  case tile of
+    Obstical id state ->
+      case List.filter (\(i, _) -> i == id) actions of
+        (_, action) :: _ ->
+          case action of
+            Close -> Obstical id Pushed
+            Open -> Obstical id InGround
+            Toggle -> Obstical id (if state == Pushed then InGround else Pushed)
+        _ -> tile
+    _ -> tile
 
 isAlivePlayer : Model -> Model
 isAlivePlayer model =
@@ -253,7 +282,7 @@ canPlayerMoveTo coord level =
     Nothing -> False
     Just Floor -> isUntaken
     Just Wall -> False
-    Just Orb -> False
+    Just (Orb _) -> False
     Just Checkpoint -> isUntaken
     Just (Obstical _ Pushed) -> False
     Just (Obstical _ InGround) -> isUntaken
@@ -299,7 +328,7 @@ tileBackground i tile =
     backgroundBox = case tile of
       Floor -> background
       Wall -> "0 32 32 32"
-      Orb -> background
+      Orb _ -> background
       Checkpoint -> background
       Obstical _ Pushed -> background
       Obstical _ InGround -> background
@@ -307,7 +336,16 @@ tileBackground i tile =
     tileItems = case tile of
       Floor -> []
       Wall -> []
-      Orb -> []
+      Orb _ ->
+        [ svg
+          [ x (String.fromInt (px * 32))
+          , y (String.fromInt (py * 32))
+          , width "32"
+          , height "32"
+          , viewBox "320 320 32 32"
+          ]
+          [ Svg.image [ xlinkHref "/assets/underworld_load/underworld_load-atlas-32x32.png" ] [] ]
+        ]
       Checkpoint ->
         [ svg
           [ x (String.fromInt (px * 32))
