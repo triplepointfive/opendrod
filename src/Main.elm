@@ -26,10 +26,13 @@ type alias Model =
   , backsteps : List Level
   , checkpoints : List Level
   , justLoaded : Bool
+  , wallTiles : Array.Array (Int, Int)
   , effect : Maybe Effect
   }
 
 type Effect = TileClicked Tile
+
+type Image = Atlas | Constructions | Lomem
 
 type Msg = KeyPress String | Tick | Click Tile
 
@@ -95,6 +98,7 @@ init () =
     , checkpoints = [level]
     , justLoaded = False
     , effect = Nothing
+    , wallTiles = buildWalls level
     }
   , Cmd.none
   )
@@ -244,32 +248,33 @@ view model =
     ]
 
 tileTags : Model -> Coord -> Tile -> List (Html Msg)
-tileTags model i tag = tileBackground model.level.width i tag ++ tileObjects i model
+tileTags model i tag = tileBackground model i tag ++ tileObjects i model
 
-tileBackground : Int -> Coord -> Tile -> List (Html Msg)
-tileBackground widht i tile =
+tileBackground : Model -> Coord -> Tile -> List (Html Msg)
+tileBackground model i tile =
   let
-    (px, py) = toCoords widht i
+    (px, py) = toCoords model.level.width i
 
     background =
-      even
-        ((modBy 2 px) + even py 0 1)
-        "192 160 32 32"
-        "192 128 32 32"
+      even ((modBy 2 px) + even py 0 1) (6, 5) (6, 4)
 
-    backgroundBox = case tile of
+    (tx, ty) = case tile of
       Floor -> background
-      Wall -> "0 32 32 32"
+      Wall -> Maybe.withDefault background (Array.get i model.wallTiles)
       Orb _ -> background
       Checkpoint -> background
       Obstical _ Pushed -> background
       Obstical _ InGround -> background
 
+    tileSet = case tile of
+      Wall -> Constructions
+      _ -> Lomem
+
     tileItems = case tile of
       Floor -> []
       Wall -> []
       Orb _ ->
-        [ imgTile (px, py) i (10, 10) "atlas" ]
+        [ imgTile (px, py) i (10, 10) Atlas ]
       Checkpoint ->
         [ svg
           [ x (String.fromInt (px * 32))
@@ -281,19 +286,11 @@ tileBackground widht i tile =
           [ Svg.image [ xlinkHref "/assets/kenney/sheet_white1x.png" ] [] ]
         ]
       Obstical _ InGround ->
-        [ imgTile (px, py) i (7, 12) "atlas" ]
+        [ imgTile (px, py) i (7, 12) Atlas ]
       Obstical _ Pushed ->
-        [ imgTile (px, py) i (8, 12) "atlas" ]
+        [ imgTile (px, py) i (8, 12) Atlas ]
   in
-    [ svg
-      [ x (String.fromInt (px * 32))
-      , y (String.fromInt (py * 32))
-      , width "32"
-      , height "32"
-      , viewBox backgroundBox
-      ]
-      [ Svg.image [ xlinkHref "/assets/underworld_load/underworld_load-lomem-32x32.png" ] [] ]
-    ] ++ tileItems
+    [ imgTile (px, py) i (tx, ty) tileSet ] ++ tileItems
 
 tileObjects : Coord -> Model -> List (Html Msg)
 tileObjects i model =
@@ -301,16 +298,16 @@ tileObjects i model =
   in
   if List.member i model.level.creatures
     then
-    [ imgTile p i (cycle (0, 8) [(1, 8), (2, 8)] model.animationTick) "atlas" ]
+    [ imgTile p i (cycle (0, 8) [(1, 8), (2, 8)] model.animationTick) Atlas ]
     else if model.level.swordPos == i
-      then [ imgTile p i (8, 15) "atlas" ]
+      then [ imgTile p i (8, 15) Atlas ]
       else
         if model.level.playerCoord == i
-        then [ imgTile p i (6, 4) "atlas" ]
+        then [ imgTile p i (6, 4) Atlas ]
         else []
 
-imgTile : (Int, Int) -> Coord -> (Int, Int) -> String -> Html Msg
-imgTile (ix, iy) i (px, py) file =
+imgTile : (Int, Int) -> Coord -> (Int, Int) -> Image -> Html Msg
+imgTile (ix, iy) i (px, py) image =
   svg
     [ x (String.fromInt (ix * 32))
     , y (String.fromInt (iy * 32))
@@ -319,7 +316,11 @@ imgTile (ix, iy) i (px, py) file =
     , viewBox (String.fromInt (32 * px) ++ " " ++ String.fromInt (32 * py) ++ " 32 32")
     ]
     [ Svg.image
-      [ xlinkHref "/assets/underworld_load/underworld_load-atlas-32x32.png" ] []
+      [ xlinkHref <| case image of
+          Atlas -> "/assets/underworld_load/underworld_load-atlas-32x32.png"
+          Constructions -> "/assets/MephTileset/_Meph_constructions.png"
+          Lomem -> "/assets/underworld_load/underworld_load-lomem-32x32.png"
+      ] []
     ]
 
 activeEffects : Model -> List (Html Msg)
@@ -330,3 +331,33 @@ activeEffects model =
         rect [ x "0", y "0", width "32", height "32", fillOpacity "0.5", fill "yellow" ] []
       ]
     _ -> []
+
+buildWalls : Level -> Array.Array (Int, Int)
+buildWalls level =
+  let
+    tileToWall coord tile =
+      let w dir = Maybe.withDefault Wall (Array.get (dirCoord level.width coord dir) level.blueprint) == Wall
+      in
+      case tile of
+        Wall ->
+          case [w N, w NE, w E, w SE, w S, w SW, w W, w NW] of
+            [True, True, True, True, True, True, True, True] -> (0, 2)
+
+            [True, True, True, _, False, _, True, True] -> (0, 0)
+            [False, _, True, True, True, True, True, _] -> (0, 0)
+
+            [True, _, False, _, True, True, True, True] -> (1, 0)
+            [True, True, True, True, True, _, False, _] -> (1, 0)
+
+            [True, False, True, True, True, True, True, True] -> (2, 0)
+            [True, True, True, False, True, True, True, True] -> (3, 0)
+            [True, True, True, True, True, False, True, True] -> (4, 0)
+            [True, True, True, True, True, True, True, False] -> (5, 0)
+
+            [False, False, False, False, True, True, True, True] -> (4, 0)
+            [False, True, True, True, True, False, False, False] -> (3, 0)
+
+            _ -> (3, 4)
+        _ -> (0, 0)
+  in
+    Array.indexedMap tileToWall level.blueprint
