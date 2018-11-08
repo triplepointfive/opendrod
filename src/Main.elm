@@ -18,7 +18,13 @@ main = Browser.element
 
 type alias Coord = Int
 
-type Tile = Wall | Floor | Orb | Checkpoint
+type alias ObsticalId = Int
+
+type ObsticalState = Pushed | InGround
+
+type OrbAction = Close | Toggle | Open
+
+type Tile = Wall | Floor | Orb | Checkpoint | Obstical ObsticalId ObsticalState
 
 type alias Creature = Coord
 
@@ -56,16 +62,16 @@ init () =
           <| List.concat
             [ [Wall, Wall, Wall, Wall, Wall]
             , [Wall, Floor, Floor, Floor, Wall]
-            , [Wall, Floor, Checkpoint, Floor, Wall]
             , [Wall, Floor, Floor, Floor, Wall]
             , [Wall, Floor, Floor, Floor, Wall]
+            , [Wall, Obstical 0 Pushed, Obstical 0 InGround, Obstical 0 Pushed, Wall]
             , [Wall, Floor, Floor, Floor, Wall]
-            , [Wall, Floor, Checkpoint, Floor, Wall]
+            , [Wall, Floor, Floor, Floor, Wall]
             , [Wall, Floor, Floor, Floor, Wall]
             , [Wall, Floor, Floor, Floor, Wall]
             , [Wall, Wall, Wall, Wall, Wall]
             ]
-      , creatures = [16]-- [29, 30, 33, 34, 25, 26]
+      , creatures = [] -- [29, 30, 33, 34, 25, 26]
       , swordPos = 11
       , playerCoord = 6
       , playerDir = S
@@ -249,6 +255,8 @@ canPlayerMoveTo coord level =
     Just Wall -> False
     Just Orb -> False
     Just Checkpoint -> isUntaken
+    Just (Obstical _ Pushed) -> False
+    Just (Obstical _ InGround) -> isUntaken
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -293,6 +301,8 @@ tileBackground i tile =
       Wall -> "0 32 32 32"
       Orb -> background
       Checkpoint -> background
+      Obstical _ Pushed -> background
+      Obstical _ InGround -> background
 
     tileItems = case tile of
       Floor -> []
@@ -307,6 +317,26 @@ tileBackground i tile =
           , viewBox "400 400 50 50"
           ]
           [ Svg.image [ xlinkHref "/assets/kenney/sheet_white1x.png" ] [] ]
+        ]
+      Obstical _ InGround ->
+        [ svg
+          [ x (String.fromInt (px * 32))
+          , y (String.fromInt (py * 32))
+          , width "32"
+          , height "32"
+          , viewBox "224 384 32 32"
+          ]
+          [ Svg.image [ xlinkHref "/assets/underworld_load/underworld_load-atlas-32x32.png" ] [] ]
+        ]
+      Obstical _ Pushed ->
+        [ svg
+          [ x (String.fromInt (px * 32))
+          , y (String.fromInt (py * 32))
+          , width "32"
+          , height "32"
+          , viewBox "256 384 32 32"
+          ]
+          [ Svg.image [ xlinkHref "/assets/underworld_load/underworld_load-atlas-32x32.png" ] [] ]
         ]
   in
     [ svg
