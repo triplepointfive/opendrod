@@ -32,7 +32,7 @@ type alias Model =
 
 type Effect = TileClicked Tile
 
-type Image = Atlas | Constructions | Lomem
+type Image = Atlas | BaseMeph | Constructions | Lomem
 
 type Msg = KeyPress String | Tick | Click Tile
 
@@ -276,7 +276,7 @@ tileBackground model i tile =
       Floor -> []
       Wall -> []
       Orb _ ->
-        [ imgTile (px, py) i (10, 10) Atlas ]
+        [ imgTile (px, py) i (4, 0) BaseMeph ]
       Checkpoint ->
         [ svg
           [ x (String.fromInt (px * 32))
@@ -320,6 +320,7 @@ imgTile (ix, iy) i (px, py) image =
     [ Svg.image
       [ xlinkHref <| case image of
           Atlas -> "/assets/underworld_load/underworld_load-atlas-32x32.png"
+          BaseMeph -> "/assets/MephTileset/_Meph_32x32.png"
           Constructions -> "/assets/MephTileset/_Meph_constructions.png"
           Lomem -> "/assets/underworld_load/underworld_load-lomem-32x32.png"
       ] []
