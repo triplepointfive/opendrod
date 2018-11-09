@@ -1,11 +1,12 @@
 import Array
 import Browser
-import Browser.Events exposing (onKeyDown)
+import Browser.Events exposing (onKeyDown, onAnimationFrameDelta)
 import Debug
 import Dict
 import Json.Decode as Decode
 import Html exposing (..)
 import Html.Attributes
+import Html.Lazy exposing (lazy)
 import Maybe
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -34,11 +35,11 @@ type alias Model =
   , levelsRepository : Dict.Dict (Int, Int) (Point -> Dir -> Level)
   }
 
-type Effect = TileClicked Tile | ChangeRoom Level Point Int Dir
+type Effect = TileClicked Tile | ChangeRoom Level Point Float Dir
 
 type Image = Atlas | BaseMeph | Constructions | Lomem
 
-type Msg = KeyPress String | Tick | Click Tile
+type Msg = KeyPress String | Tick | Click Tile | AnimationRate Float
 
 init : () -> ( Model, Cmd.Cmd Msg )
 init () =
@@ -51,7 +52,7 @@ init () =
     , backsteps = []
     , checkpoints = [level]
     , justLoaded = False
-    , effect = Just (ChangeRoom level (0, 0) 0 S) -- Nothing
+    , effect = Just (ChangeRoom (level2 (15, 0) S) (0, 0) 0 S) -- Nothing
     , levelsRepository = Dict.fromList [((0, 0), level1), ((0, 1), level2)]
     }
   , Cmd.none
@@ -61,6 +62,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
     Tick -> ( tick model , Cmd.none )
+    AnimationRate delta -> ( tickEffect delta model, Cmd.none )
 
     KeyPress "Backspace" -> ( undo model , Cmd.none )
     KeyPress "r" -> ( loadCheckpoint model , Cmd.none )
@@ -111,6 +113,17 @@ tick model =
   { model
   | animationTick = model.animationTick + 1
   }
+
+tickEffect : Float -> Model -> Model
+tickEffect delta model =
+  case model.effect of
+    Just (ChangeRoom l (dx, dy) s d) ->
+      if s >= 1024
+        then { model | effect = Nothing }
+        else
+          { model | effect = Just <| ChangeRoom l (dx, dy + round delta) (s + delta) d }
+
+    _ -> model
 
 addClickTileEffect : Tile -> Model -> Model
 addClickTileEffect tile model =
@@ -199,7 +212,8 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch
     [ onKeyDown keyDecoder
-    , Time.every 500 (const Tick)
+    -- , Time.every 500 (const Tick)
+    , onAnimationFrameDelta AnimationRate
     ]
 
 keyDecoder : Decode.Decoder Msg
@@ -211,25 +225,25 @@ view : Model -> Html Msg
 view model =
   div []
     <| case model.effect of
-      Just (ChangeRoom _ (dx, dy) _ _) ->
-        [ drawRoom (1024, 1024 - dy) model.level
-        , drawRoom (1024, dy) model.level
+      Just (ChangeRoom targetRoom (dx, dy) _ _) ->
+        [ lazy (drawRoom (0, dy) (1024, 1024 - dy)) model.level
+        , lazy (drawRoom (0, 0) (1024, dy)) targetRoom
         , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
         ]
       _ ->
-        [ drawRoom (1024, 1024) model.level
+        [ drawRoom (0, 0) (1024, 1024) model.level
         , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
         ]
 
-drawRoom : Point -> Level -> Html Msg
-drawRoom (w, h) level =
+drawRoom : Point -> Point -> Level -> Html Msg
+drawRoom (dx, dy) (w, h) level =
   svg
     [ width <| String.fromInt w
     , height <| String.fromInt h
     , viewBox
       <| String.concat
       <| List.intersperse " "
-      <| List.map String.fromInt [1024 - w, 1024 - h, w, h]
+      <| List.map String.fromInt [dx, dy, w, h]
     , Html.Attributes.style "display" "block"
     ]
 
