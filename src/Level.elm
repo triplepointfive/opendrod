@@ -2,8 +2,6 @@ module Level exposing (..)
 
 import Array
 
-import Utils exposing (..)
-
 type alias Coord = Int
 
 type alias ObsticalId = Int
@@ -33,21 +31,10 @@ type alias Level =
   , playerCoord : Coord
   , playerDir : Dir
   , width : Int
+  , pos : (Int, Int)
   }
 
 type Dir = N | NE | E | SE | S | SW | W | NW
-
-buildBlueprint : List String -> List (Coord, Tile) -> Array.Array Tile
-buildBlueprint walls tiles =
-  let
-    buildTile i char =
-      case List.filter (\(j, _) -> i == j) tiles of
-        (_, t) :: _ -> t
-        _ -> case char of
-                '#' -> Wall
-                _ -> Floor
-  in
-  Array.indexedMap buildTile <| Array.fromList <| List.concatMap String.toList walls
 
 dirCoord : Int -> Coord -> Dir -> Coord
 dirCoord w coord dir =
@@ -114,35 +101,6 @@ canPlayerMoveTo coord level =
     Just Checkpoint -> isUntaken
     Just (Obstical _ Pushed) -> False
     Just (Obstical _ InGround) -> isUntaken
-
-roachAI : Creature -> Level -> Level
-roachAI coord level =
-  if List.member coord level.creatures
-    then
-      let dx = sign <| (modBy level.width level.playerCoord) - (modBy level.width coord)
-          dy = level.width * sign ((level.playerCoord // level.width) - (coord // level.width))
-          directMoves =
-            List.map ((+) coord)
-            <| [dx + dy] ++ (List.reverse <| List.sortBy (squareDistanceToPlayer level) [dy, dx])
-          newCoord =
-            case List.filter (\ i -> canMoveTo i level) directMoves of
-              freeCoord :: _ -> freeCoord
-              _ -> coord
-      in
-      { level
-      | creatures = newCoord :: List.filter ((/=) coord) level.creatures
-      }
-    else
-      level
-
-squareDistanceToPlayer : Level -> Creature -> Int
-squareDistanceToPlayer level coords =
-  let
-    (px, py) = toCoords level.width level.playerCoord
-    (x, y) = toCoords level.width coords
-    (dx, dy) = (px - x, py - y)
-  in
-    dx * dx + dy * dy
 
 buildSwordPos : Level -> Level
 buildSwordPos level =
