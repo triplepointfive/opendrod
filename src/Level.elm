@@ -34,6 +34,7 @@ type alias Level =
   , playerDir : Dir
   , width : Int
   , pos : Point
+  , wallTiles : Array.Array (Int, Int)
   }
 
 type Dir = N | NE | E | SE | S | SW | W | NW

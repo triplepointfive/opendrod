@@ -5,7 +5,7 @@ import Debug
 import Dict
 import Json.Decode as Decode
 import Html exposing (..)
-import Html.Attributes exposing (href)
+import Html.Attributes
 import Maybe
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -30,12 +30,11 @@ type alias Model =
   , backsteps : List Level
   , checkpoints : List Level
   , justLoaded : Bool
-  , wallTiles : Array.Array (Int, Int)
   , effect : Maybe Effect
   , levelsRepository : Dict.Dict (Int, Int) (Point -> Dir -> Level)
   }
 
-type Effect = TileClicked Tile
+type Effect = TileClicked Tile | ChangeRoom Level Point Int Dir
 
 type Image = Atlas | BaseMeph | Constructions | Lomem
 
@@ -44,7 +43,6 @@ type Msg = KeyPress String | Tick | Click Tile
 init : () -> ( Model, Cmd.Cmd Msg )
 init () =
   let
-    walls = List.repeat 27 Wall
     level = level1 (15, 30) S
   in
   ( { level = level
@@ -53,8 +51,7 @@ init () =
     , backsteps = []
     , checkpoints = [level]
     , justLoaded = False
-    , effect = Nothing
-    , wallTiles = buildWalls level
+    , effect = Just (ChangeRoom level (0, 0) 0 S) -- Nothing
     , levelsRepository = Dict.fromList [((0, 0), level1), ((0, 1), level2)]
     }
   , Cmd.none
@@ -134,7 +131,6 @@ enterLevel level model =
   , backsteps = []
   , checkpoints = [level]
   , justLoaded = False
-  , wallTiles = buildWalls level
   }
 
 withMAction : (Level -> MoveResult) -> Model -> Model
@@ -214,32 +210,51 @@ keyDecoder =
 view : Model -> Html Msg
 view model =
   div []
-    [ svg
-        [ width "1024", height "1024", viewBox "0 0 1024 1024" ]
-        (
-          (rect [ x "0", y "0", width "1024", height "1024", fill "grey" ] []) ::
-          List.concat (Array.toList (Array.indexedMap (tileTags model) model.level.blueprint))
-          ++ activeEffects model
-        )
-    , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
+    <| case model.effect of
+      Just (ChangeRoom _ (dx, dy) _ _) ->
+        [ drawRoom (1024, 1024 - dy) model.level
+        , drawRoom (1024, dy) model.level
+        , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
+        ]
+      _ ->
+        [ drawRoom (1024, 1024) model.level
+        , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
+        ]
+
+drawRoom : Point -> Level -> Html Msg
+drawRoom (w, h) level =
+  svg
+    [ width <| String.fromInt w
+    , height <| String.fromInt h
+    , viewBox
+      <| String.concat
+      <| List.intersperse " "
+      <| List.map String.fromInt [1024 - w, 1024 - h, w, h]
+    , Html.Attributes.style "display" "block"
     ]
 
-tileTags : Model -> Coord -> Tile -> List (Html Msg)
-tileTags model i tag =
-  tileBackground model i tag ++
-    tileObjects i model
+    (
+      (rect [ x "0", y "0", width "1024", height "1024", fill "grey" ] []) ::
+      List.concat (Array.toList (Array.indexedMap (tileTags level) level.blueprint))
+      -- ++ activeEffects model
+    )
 
-tileBackground : Model -> Coord -> Tile -> List (Html Msg)
-tileBackground model i tile =
+tileTags : Level -> Coord -> Tile -> List (Html Msg)
+tileTags level i tag =
+  tileBackground level i tag ++
+    tileObjects i level
+
+tileBackground : Level -> Coord -> Tile -> List (Html Msg)
+tileBackground level i tile =
   let
-    (px, py) = toCoords model.level.width i
+    (px, py) = toCoords level.width i
 
     background =
       even ((modBy 2 px) + even py 0 1) (6, 5) (6, 4)
 
     pos = case tile of
       Floor -> background
-      Wall -> Maybe.withDefault background (Array.get i model.wallTiles)
+      Wall -> Maybe.withDefault background (Array.get i level.wallTiles)
       Orb _ -> background
       Checkpoint -> background
       Obstical _ Pushed -> background
@@ -271,17 +286,18 @@ tileBackground model i tile =
   in
     (if pos == (-1, -1) then [] else [ imgTile (px, py) i pos tileSet ]) ++ tileItems
 
-tileObjects : Coord -> Model -> List (Html Msg)
-tileObjects i model =
-  let p = toCoords model.level.width i
+tileObjects : Coord -> Level -> List (Html Msg)
+tileObjects i level =
+  let p = toCoords level.width i
   in
-  if List.member i model.level.creatures
+  if List.member i level.creatures
     then
-    [ imgTile p i (cycle (0, 8) [(1, 8), (2, 8)] model.animationTick) Atlas ]
-    else if model.level.swordPos == i
+      --[ imgTile p i (cycle (0, 8) [(1, 8), (2, 8)] animationTick) Atlas ]
+      [ imgTile p i (0, 8) Atlas ]
+    else if level.swordPos == i
       then [ imgTile p i (8, 15) Atlas ]
       else
-        if model.level.playerCoord == i
+        if level.playerCoord == i
         then [ imgTile p i (6, 4) Atlas ]
         else []
 
@@ -311,42 +327,3 @@ activeEffects model =
         rect [ x "0", y "0", width "32", height "32", fillOpacity "0.5", fill "yellow" ] []
       ]
     _ -> []
-
-buildWalls : Level -> Array.Array (Int, Int)
-buildWalls level =
-  let
-    layer = 0
-
-    tileToWall coord tile =
-      let w dir = Maybe.withDefault Wall (Array.get (dirCoord level.width coord dir) level.blueprint) == Wall
-      in
-      case tile of
-        Wall ->
-          case [w N, w NE, w E, w SE, w S, w SW, w W, w NW] of
-            [True, True, True, True, True, True, True, True] -> (-1, -1)
-
-            [True, True, True, _, False, _, True, True] -> (0, layer)
-            [False, _, True, True, True, True, True, _] -> (0, layer)
-
-            [True, _, False, _, True, True, True, True] -> (1, layer)
-            [True, True, True, True, True, _, False, _] -> (1, layer)
-
-            [True, False, True, True, True, True, True, True] -> (2, layer)
-            [True, True, True, False, True, True, True, True] -> (3, layer)
-            [True, True, True, True, True, False, True, True] -> (4, layer)
-            [True, True, True, True, True, True, True, False] -> (5, layer)
-
-            [True, True, True, True, False, False, False, False] -> (2, layer)
-            [False, True, True, True, True, False, False, False] -> (3, layer)
-            [False, False, False, False, True, True, True, True] -> (4, layer)
-            [True, False, False, False, False, True, True, True] -> (5, layer)
-
-            [True, True, True, False, False, False, False, False] -> (2, layer)
-            [False, False, True, True, True, False, False, False] -> (3, layer)
-            [False, False, False, False, True, True, True, False] -> (4, layer)
-            [True, False, False, False, False, False, True, True] -> (5, layer)
-
-            _ -> (3, 4)
-        _ -> (0, 0)
-  in
-    Array.indexedMap tileToWall level.blueprint
