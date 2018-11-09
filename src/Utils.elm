@@ -1,5 +1,7 @@
 module Utils exposing (..)
 
+type alias Point = (Int, Int)
+
 cycle : a -> List a -> Int -> a
 cycle x xs i =
   case List.drop (modBy (1 + List.length xs) i) xs of
@@ -21,5 +23,11 @@ even : Int -> a -> a -> a
 even i t f =
   if modBy 2 i == 0 then t else f
 
-toCoords : Int -> Int -> (Int, Int)
+toCoords : Int -> Int -> Point
 toCoords w i = (modBy w i , i // w)
+
+fst : (a, b) -> a
+fst (a, _) = a
+
+snd : (a, b) -> b
+snd (_, b) = b

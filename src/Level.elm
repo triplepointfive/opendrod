@@ -2,6 +2,8 @@ module Level exposing (..)
 
 import Array
 
+import Utils exposing (..)
+
 type alias Coord = Int
 
 type alias ObsticalId = Int
@@ -31,7 +33,7 @@ type alias Level =
   , playerCoord : Coord
   , playerDir : Dir
   , width : Int
-  , pos : (Int, Int)
+  , pos : Point
   }
 
 type Dir = N | NE | E | SE | S | SW | W | NW
@@ -47,6 +49,18 @@ dirCoord w coord dir =
     SW -> w - 1
     W  -> -1
     NW -> -w - 1
+
+dirPoint : Point -> Dir -> Point
+dirPoint (x, y) dir =
+  case dir of
+    N  -> (x, y - 1)
+    NE -> (x + 1, y- 1)
+    E  -> (x + 1, y)
+    SE -> (x + 1, y + 1)
+    S  -> (x, y + 1)
+    SW -> (x - 1, y + 1)
+    W  -> (x - 1, y)
+    NW -> (x - 1, y- 1)
 
 dirLeft : Dir -> Dir
 dirLeft dir =
@@ -76,13 +90,28 @@ turn : (Dir -> Dir) -> Level -> Level
 turn newDir level =
   { level | playerDir = newDir level.playerDir }
 
-playerMoveDir : Dir -> Level -> Level
+type MoveResult = Move Level | Leave Point Point
+
+playerMoveDir : Dir -> Level -> MoveResult
 playerMoveDir dir level =
-  let destPos = dirCoord level.width level.playerCoord dir
+  let
+    destPos = dirCoord level.width level.playerCoord dir
+    (x, y) = dirPoint (toCoords level.width level.playerCoord) dir
+
+    (lx, ly) = dirPoint level.pos dir
   in
     if canPlayerMoveTo destPos level
-    then { level | playerCoord = destPos }
-    else level
+    then Move { level | playerCoord = destPos }
+    else if x >= 0 && y >= 0 && x < level.width && y < level.width
+      then Move level
+      else Leave
+        ( if x < 0 || x >= level.width then lx else fst level.pos
+        , if y < 0 || y >= level.width then ly else snd level.pos
+        )
+
+        ( modBy level.width x
+        , modBy level.width y
+        )
 
 canMoveTo : Coord -> Level -> Bool
 canMoveTo coord level =

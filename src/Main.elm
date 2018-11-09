@@ -1,6 +1,8 @@
 import Array
 import Browser
 import Browser.Events exposing (onKeyDown)
+import Debug
+import Dict
 import Json.Decode as Decode
 import Html exposing (..)
 import Html.Attributes exposing (href)
@@ -30,6 +32,7 @@ type alias Model =
   , justLoaded : Bool
   , wallTiles : Array.Array (Int, Int)
   , effect : Maybe Effect
+  , levelsRepository : Dict.Dict (Int, Int) (Point -> Dir -> Level)
   }
 
 type Effect = TileClicked Tile
@@ -42,7 +45,7 @@ init : () -> ( Model, Cmd.Cmd Msg )
 init () =
   let
     walls = List.repeat 27 Wall
-    level = level2
+    level = level1 (15, 30) S
   in
   ( { level = level
     , playerAlive = True
@@ -52,6 +55,7 @@ init () =
     , justLoaded = False
     , effect = Nothing
     , wallTiles = buildWalls level
+    , levelsRepository = Dict.fromList [((0, 0), level1), ((0, 1), level2)]
     }
   , Cmd.none
   )
@@ -67,15 +71,15 @@ update msg model =
     KeyPress "q" -> ( withAction (turn dirLeft) model , Cmd.none )
     KeyPress "w" -> ( withAction (turn dirRight) model , Cmd.none )
 
-    KeyPress "j" -> ( withAction (playerMoveDir S) model, Cmd.none )
-    KeyPress "k" -> ( withAction (playerMoveDir N) model, Cmd.none )
-    KeyPress "l" -> ( withAction (playerMoveDir E) model, Cmd.none )
-    KeyPress "h" -> ( withAction (playerMoveDir W) model, Cmd.none )
+    KeyPress "j" -> ( withMAction (playerMoveDir S) model, Cmd.none )
+    KeyPress "k" -> ( withMAction (playerMoveDir N) model, Cmd.none )
+    KeyPress "l" -> ( withMAction (playerMoveDir E) model, Cmd.none )
+    KeyPress "h" -> ( withMAction (playerMoveDir W) model, Cmd.none )
 
-    KeyPress "y" -> ( withAction (playerMoveDir NW) model, Cmd.none )
-    KeyPress "u" -> ( withAction (playerMoveDir NE) model , Cmd.none )
-    KeyPress "b" -> ( withAction (playerMoveDir SW) model, Cmd.none )
-    KeyPress "n" -> ( withAction (playerMoveDir SE) model , Cmd.none )
+    KeyPress "y" -> ( withMAction (playerMoveDir NW) model, Cmd.none )
+    KeyPress "u" -> ( withMAction (playerMoveDir NE) model , Cmd.none )
+    KeyPress "b" -> ( withMAction (playerMoveDir SW) model, Cmd.none )
+    KeyPress "n" -> ( withMAction (playerMoveDir SE) model , Cmd.none )
 
     KeyPress _ -> ( model, Cmd.none )
 
@@ -122,6 +126,25 @@ creatureTurn creature model =
   if model.playerAlive
     then onLevel (roachAI creature) model
     else model
+
+enterLevel : Level -> Model -> Model
+enterLevel level model =
+  { model
+  | level = level
+  , backsteps = []
+  , checkpoints = [level]
+  , justLoaded = False
+  , wallTiles = buildWalls level
+  }
+
+withMAction : (Level -> MoveResult) -> Model -> Model
+withMAction action model =
+  case action model.level of
+    Move level -> withAction (const level) model
+    Leave pos newPlayerPos ->
+      case Dict.get pos model.levelsRepository of
+        Just level -> enterLevel (level newPlayerPos model.level.playerDir) model
+        Nothing -> withAction (const model.level) model
 
 withAction : (Level -> Level) -> Model -> Model
 withAction action model =
