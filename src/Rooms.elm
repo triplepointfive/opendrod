@@ -228,7 +228,12 @@ buildWalls blueprint width =
             [True, True, True, True, True, _, False, _] -> (1, layer)
             [True, _, False, _, True, _, False, _] -> (1, layer)
 
-            _ -> if (List.length <| List.filter identity walls) == 1
+            [True, _, True, _, _, _, _, _] -> (2, layer)
+            [_, _, True, _, True, _, _, _] -> (3, layer)
+            [_, _, _, _, True, _, True, _] -> (4, layer)
+            [True, _, _, _, _, _, True, _] -> (5, layer)
+
+            _ -> if (List.length <| List.filter w [N, E, S, W]) == 1
               then (12, layer) else (3, 4)
         _ -> (0, 0)
   in
