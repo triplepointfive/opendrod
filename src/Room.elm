@@ -136,7 +136,7 @@ playerMoveDir dir level =
     else if x >= 0 && y >= 0 && x < level.width && y < level.height
       then Move level
       else
-        let delta = ( if x < 0 || x >= level.width then (lx, 0) else (0, ly) ) in
+        let delta = if x < 0 || x >= level.width then (lx, 0) else (0, ly) in
         Leave
           delta
 

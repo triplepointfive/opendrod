@@ -44,7 +44,7 @@ type Msg = KeyPress String | Tick | Click Tile | AnimationRate Float
 init : () -> ( Model, Cmd.Cmd Msg )
 init () =
   let
-    level = level3 (6, 14) S -- (15, 0)
+    level = level2 (36, 27) E -- (6, 14) S -- (15, 0)
   in
   ( { level = level
     , playerAlive = True
@@ -53,7 +53,7 @@ init () =
     , checkpoints = [level]
     , justLoaded = False
     , effect = Nothing
-    , levelsRepository = Dict.fromList [((0, 0), level1), ((0, 1), level2), ((0, 2), level3)]
+    , levelsRepository = Dict.fromList [((0, 0), level1), ((0, 1), level2), ((0, 2), level3), ((1, 1), level4)]
     }
   , Cmd.none
   )
