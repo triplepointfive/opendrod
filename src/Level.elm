@@ -33,6 +33,7 @@ type alias Level =
   , playerCoord : Coord
   , playerDir : Dir
   , width : Int
+  , height : Int
   , pos : Point
   , wallTiles : Array.Array (Int, Int)
   }
@@ -53,15 +54,20 @@ dirCoord w coord dir =
 
 dirPoint : Point -> Dir -> Point
 dirPoint (x, y) dir =
+  let (dx, dy) = dirDelta dir
+  in (x + dx, y + dy)
+
+dirDelta : Dir -> Point
+dirDelta dir =
   case dir of
-    N  -> (x, y - 1)
-    NE -> (x + 1, y- 1)
-    E  -> (x + 1, y)
-    SE -> (x + 1, y + 1)
-    S  -> (x, y + 1)
-    SW -> (x - 1, y + 1)
-    W  -> (x - 1, y)
-    NW -> (x - 1, y- 1)
+    N  -> (0, -1)
+    NE -> (1, -1)
+    E  -> (1, 0)
+    SE -> (1, 1)
+    S  -> (0, 1)
+    SW -> (-1, 1)
+    W  -> (-1, 0)
+    NW -> (-1, -1)
 
 dirLeft : Dir -> Dir
 dirLeft dir =
@@ -97,22 +103,22 @@ playerMoveDir : Dir -> Level -> MoveResult
 playerMoveDir dir level =
   let
     destPos = dirCoord level.width level.playerCoord dir
-    (x, y) = dirPoint (toCoords level.width level.playerCoord) dir
-
-    (lx, ly) = dirPoint level.pos dir
+    (px, py) = toCoords level.width level.playerCoord
+    (x, y) = dirPoint (px, py) dir
+    (lx, ly) = dirDelta dir
   in
     if canPlayerMoveTo destPos level
     then Move { level | playerCoord = destPos }
-    else if x >= 0 && y >= 0 && x < level.width && y < level.width
+    else if x >= 0 && y >= 0 && x < level.width && y < level.height
       then Move level
-      else Leave
-        ( if x < 0 || x >= level.width then lx else fst level.pos
-        , if y < 0 || y >= level.width then ly else snd level.pos
-        )
+      else
+        let delta = ( if x < 0 || x >= level.width then (lx, 0) else (0, ly) ) in
+        Leave
+          delta
 
-        ( modBy level.width x
-        , modBy level.width y
-        )
+          ( modBy level.width (px + fst delta)
+          , modBy level.height (py + snd delta)
+          )
 
 canMoveTo : Coord -> Level -> Bool
 canMoveTo coord level =
@@ -156,7 +162,6 @@ swordToggle level =
       }
     _ -> level
 
-
 orbAction : List (ObsticalId, OrbAction) -> Tile -> Tile
 orbAction actions tile =
   case tile of
@@ -169,3 +174,20 @@ orbAction actions tile =
             Toggle -> Obstical id (if state == Pushed then InGround else Pushed)
         _ -> tile
     _ -> tile
+
+concatLevels : Level -> Level -> Point -> Level
+concatLevels origin addend (dx, dy) =
+  if dy < 0 then
+    { origin
+    | blueprint = Array.append addend.blueprint origin.blueprint
+    , height    = origin.height + origin.height
+    , wallTiles = Array.append addend.wallTiles origin.wallTiles
+    , creatures = origin.creatures ++ addend.creatures
+    }
+  else
+    { origin
+    | blueprint = Array.append origin.blueprint addend.blueprint
+    , height    = origin.height + origin.height
+    , wallTiles = Array.append origin.wallTiles addend.wallTiles
+    , creatures = origin.creatures ++ addend.creatures
+    }

@@ -35,7 +35,7 @@ type alias Model =
   , levelsRepository : Dict.Dict (Int, Int) (Point -> Dir -> Level)
   }
 
-type Effect = TileClicked Tile | ChangeRoom Level Point Float Dir
+type Effect = TileClicked Tile | ChangeRoom Level Point Int Point
 
 type Image = Atlas | BaseMeph | Constructions | Lomem
 
@@ -44,7 +44,7 @@ type Msg = KeyPress String | Tick | Click Tile | AnimationRate Float
 init : () -> ( Model, Cmd.Cmd Msg )
 init () =
   let
-    level = level1 (15, 30) S
+    level = level2 (15, 0) S
   in
   ( { level = level
     , playerAlive = True
@@ -52,7 +52,7 @@ init () =
     , backsteps = []
     , checkpoints = [level]
     , justLoaded = False
-    , effect = Just (ChangeRoom (level2 (15, 0) S) (0, 0) 0 S) -- Nothing
+    , effect = Nothing
     , levelsRepository = Dict.fromList [((0, 0), level1), ((0, 1), level2)]
     }
   , Cmd.none
@@ -115,13 +115,22 @@ tick model =
   }
 
 tickEffect : Float -> Model -> Model
-tickEffect delta model =
+tickEffect _ model =
   case model.effect of
-    Just (ChangeRoom l (dx, dy) s d) ->
-      if s >= 1024
-        then { model | effect = Nothing }
+    Just (ChangeRoom level offset s delta) ->
+      if s >= 32
+        then
+          { model
+          | effect = Nothing
+          , level = level
+          , backsteps = []
+          , checkpoints = [level]
+          , justLoaded = False
+          }
         else
-          { model | effect = Just <| ChangeRoom l (dx, dy + round delta) (s + delta) d }
+          { model
+          | effect = Just <| ChangeRoom level (add offset delta) (s + 1) delta
+          }
 
     _ -> model
 
@@ -137,22 +146,23 @@ creatureTurn creature model =
     then onLevel (roachAI creature) model
     else model
 
-enterLevel : Level -> Model -> Model
-enterLevel level model =
-  { model
-  | level = level
-  , backsteps = []
-  , checkpoints = [level]
-  , justLoaded = False
-  }
-
 withMAction : (Level -> MoveResult) -> Model -> Model
 withMAction action model =
   case action model.level of
     Move level -> withAction (const level) model
-    Leave pos newPlayerPos ->
-      case Dict.get pos model.levelsRepository of
-        Just level -> enterLevel (level newPlayerPos model.level.playerDir) model
+    Leave delta newPlayerPos ->
+      case Dict.get (add model.level.pos delta) model.levelsRepository of
+        Just level ->
+          let nextLevel = level newPlayerPos model.level.playerDir
+          in
+          { model
+          | effect = Just <| ChangeRoom
+              nextLevel
+              (Basics.max 0 (-38 * fst delta), Basics.max 0 (-32 * snd delta))
+              0
+              delta
+          , level = concatLevels model.level nextLevel delta
+          }
         Nothing -> withAction (const model.level) model
 
 withAction : (Level -> Level) -> Model -> Model
@@ -225,43 +235,57 @@ view : Model -> Html Msg
 view model =
   div []
     <| case model.effect of
-      Just (ChangeRoom targetRoom (dx, dy) _ _) ->
-        [ lazy (drawRoom (0, dy) (1024, 1024 - dy)) model.level
-        , lazy (drawRoom (0, 0) (1024, dy)) targetRoom
+      Just (ChangeRoom _ offset _ _) ->
+        [ drawRoom offset model.level
         , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
         ]
       _ ->
-        [ drawRoom (0, 0) (1024, 1024) model.level
+        [ lazy (drawRoom (0, 0)) model.level
         , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
         ]
 
-drawRoom : Point -> Point -> Level -> Html Msg
-drawRoom (dx, dy) (w, h) level =
+drawRoom : Point -> Level -> Html Msg
+drawRoom offset level =
   svg
-    [ width <| String.fromInt w
-    , height <| String.fromInt h
-    , viewBox
-      <| String.concat
-      <| List.intersperse " "
-      <| List.map String.fromInt [dx, dy, w, h]
+    [ width "1216"
+    , height "1024"
+    , viewBox "0 0 1216 1024"
     , Html.Attributes.style "display" "block"
     ]
 
     (
-      (rect [ x "0", y "0", width "1024", height "1024", fill "grey" ] []) ::
-      List.concat (Array.toList (Array.indexedMap (tileTags level) level.blueprint))
+      (rect
+        [ x "0"
+        , y "0"
+        , width "1216"
+        , height "1024"
+        , fill "rgb(75, 73, 75)"
+        ] []) ::
+      List.concat (
+        Array.toList
+        <| Array.map (tileTags offset level)
+        <| Array.filter (visible offset)
+        <| Array.indexedMap pair level.blueprint
+        )
       -- ++ activeEffects model
     )
 
-tileTags : Level -> Coord -> Tile -> List (Html Msg)
-tileTags level i tag =
-  tileBackground level i tag ++
-    tileObjects i level
+visible : Point -> (Coord, Tile) -> Bool
+visible (ox, oy) (i, tile) =
+  let
+    (x, y) = toCoords 38 i
+  in
+    ox <= x && x < ox + 38 && oy <= y && y < oy + 32
 
-tileBackground : Level -> Coord -> Tile -> List (Html Msg)
-tileBackground level i tile =
+tileTags : Point -> Level -> (Coord, Tile) -> List (Html Msg)
+tileTags offset level (i, tag) =
+  tileBackground offset level i tag ++ tileObjects offset i level
+
+tileBackground : Point -> Level -> Coord -> Tile -> List (Html Msg)
+tileBackground offset level i tile =
   let
     (px, py) = toCoords level.width i
+    displayPos = Utils.sub (px, py) offset
 
     background =
       even ((modBy 2 px) + even py 0 1) (6, 5) (6, 4)
@@ -282,11 +306,11 @@ tileBackground level i tile =
       Floor -> []
       Wall -> []
       Orb _ ->
-        [ imgTile (px, py) i (4, 0) BaseMeph ]
+        [ imgTile displayPos (4, 0) BaseMeph ]
       Checkpoint ->
         [ svg
-          [ x (String.fromInt (px * 32))
-          , y (String.fromInt (py * 32))
+          [ x (String.fromInt (fst displayPos * 32))
+          , y (String.fromInt (snd displayPos * 32))
           , width "32"
           , height "32"
           , viewBox "400 400 50 50"
@@ -294,29 +318,29 @@ tileBackground level i tile =
           [ Svg.image [ xlinkHref "/assets/kenney/sheet_white1x.png" ] [] ]
         ]
       Obstical _ InGround ->
-        [ imgTile (px, py) i (7, 12) Atlas ]
+        [ imgTile displayPos (7, 12) Atlas ]
       Obstical _ Pushed ->
-        [ imgTile (px, py) i (8, 12) Atlas ]
+        [ imgTile displayPos (8, 12) Atlas ]
   in
-    (if pos == (-1, -1) then [] else [ imgTile (px, py) i pos tileSet ]) ++ tileItems
+    (if pos == (-1, -1) then [] else [ imgTile displayPos pos tileSet ]) ++ tileItems
 
-tileObjects : Coord -> Level -> List (Html Msg)
-tileObjects i level =
-  let p = toCoords level.width i
+tileObjects : Point -> Coord -> Level -> List (Html Msg)
+tileObjects offset i level =
+  let p = Utils.sub (toCoords level.width i) offset
   in
   if List.member i level.creatures
     then
       --[ imgTile p i (cycle (0, 8) [(1, 8), (2, 8)] animationTick) Atlas ]
-      [ imgTile p i (0, 8) Atlas ]
+      [ imgTile p (0, 8) Atlas ]
     else if level.swordPos == i
-      then [ imgTile p i (8, 15) Atlas ]
+      then [ imgTile p (8, 15) Atlas ]
       else
         if level.playerCoord == i
-        then [ imgTile p i (6, 4) Atlas ]
+        then [ imgTile p (6, 4) Atlas ]
         else []
 
-imgTile : (Int, Int) -> Coord -> (Int, Int) -> Image -> Html Msg
-imgTile (ix, iy) i (px, py) image =
+imgTile : (Int, Int) -> (Int, Int) -> Image -> Html Msg
+imgTile (ix, iy) (px, py) image =
   svg
     [ x (String.fromInt (ix * 32))
     , y (String.fromInt (iy * 32))

@@ -31,3 +31,12 @@ fst (a, _) = a
 
 snd : (a, b) -> b
 snd (_, b) = b
+
+add : Point -> Point -> Point
+add (x, y) (dx, dy) = (x + dx, y + dy)
+
+sub : Point -> Point -> Point
+sub (x, y) (dx, dy) = (x - dx, y - dy)
+
+pair : a -> b -> (a, b)
+pair a b = (a, b)
