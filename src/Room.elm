@@ -214,10 +214,32 @@ concatLevels origin addend (dx, dy) =
     , swordPos  = origin.swordPos + size
     , playerCoord = origin.playerCoord + size
     }
-  else
+  else if dy > 0 then
     { origin
     | blueprint = Array.append origin.blueprint addend.blueprint
     , height    = origin.height + origin.height
     , wallTiles = Array.append origin.wallTiles addend.wallTiles
     , creatures = origin.creatures ++ List.map ((+) size) addend.creatures
     }
+  else if dx > 0 then
+    { origin
+    | blueprint = appendV addend.blueprint origin.blueprint
+    , width     = origin.width + origin.width
+    , wallTiles = appendV addend.wallTiles origin.wallTiles
+    -- , creatures = origin.creatures ++ List.map ((+) size) addend.creatures
+    }
+  else
+    { origin
+    | blueprint = appendV origin.blueprint addend.blueprint
+    , width     = origin.width + origin.width
+    , wallTiles = appendV origin.wallTiles addend.wallTiles
+    -- , creatures = origin.creatures ++ List.map ((+) size) addend.creatures
+    }
+
+appendV : Array.Array a -> Array.Array a -> Array.Array a
+appendV xs ys =
+  let row i arr = Array.slice (i * 38) ((i + 1) * 38) arr
+  in
+  List.foldl (\x acc -> Array.append x acc) Array.empty
+    <| List.concatMap (\i -> [row i xs, row i ys])
+    <| List.reverse <| List.range 0 31

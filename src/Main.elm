@@ -268,18 +268,18 @@ drawRoom offset level =
       List.concat (
         Array.toList
         <| Array.map (tileTags offset level)
-        <| Array.filter (visible offset)
+        <| Array.filter (visible level.width offset)
         <| Array.indexedMap pair level.blueprint
         )
       -- ++ activeEffects model
     )
 
-visible : Point -> (Coord, Tile) -> Bool
-visible (ox, oy) (i, tile) =
+visible : Int -> Point -> (Coord, Tile) -> Bool
+visible width (ox, oy) (i, tile) =
   let
-    (x, y) = toCoords 38 i
+    (x, y) = toCoords width i
   in
-    ox <= x && x < ox + 38 && oy <= y && y < oy + 32
+    ox <= x && x < ox + width && oy <= y && y < oy + width
 
 tileTags : Point -> Room -> (Coord, Tile) -> List (Html Msg)
 tileTags offset level (i, tag) =
