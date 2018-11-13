@@ -44,7 +44,7 @@ type Msg = KeyPress String | Tick | Click Tile | AnimationRate Float
 init : () -> ( Model, Cmd.Cmd Msg )
 init () =
   let
-    level = level2 (15, 0) S
+    level = level3 (6, 14) S -- (15, 0)
   in
   ( { level = level
     , playerAlive = True
@@ -53,7 +53,7 @@ init () =
     , checkpoints = [level]
     , justLoaded = False
     , effect = Nothing
-    , levelsRepository = Dict.fromList [((0, 0), level1), ((0, 1), level2)]
+    , levelsRepository = Dict.fromList [((0, 0), level1), ((0, 1), level2), ((0, 2), level3)]
     }
   , Cmd.none
   )
@@ -301,6 +301,7 @@ tileBackground offset level i tile =
       Checkpoint -> background
       Obstical _ Pushed -> background
       Obstical _ InGround -> background
+      Arrow _ -> background
 
     tileSet = case tile of
       Wall -> Constructions
@@ -325,6 +326,15 @@ tileBackground offset level i tile =
         [ imgTile displayPos (7, 12) Atlas ]
       Obstical _ Pushed ->
         [ imgTile displayPos (8, 12) Atlas ]
+
+      Arrow N -> [img50Tile displayPos (0, 8)]
+      Arrow S -> [img50Tile displayPos (1, 1)]
+      Arrow W -> [img50Tile displayPos (1, 0)]
+      Arrow E -> [img50Tile displayPos (0, 9)]
+      Arrow NW -> [img50Tile displayPos (2, 0)]
+      Arrow NE -> [img50Tile displayPos (1, 9)]
+      Arrow SW -> [img50Tile displayPos (8, 5)]
+      Arrow SE -> [img50Tile displayPos (8, 4)]
   in
     (if pos == (-1, -1) then [] else [ imgTile displayPos pos tileSet ]) ++ tileItems
 
@@ -342,6 +352,17 @@ tileObjects offset i level =
         if level.playerCoord == i
         then [ imgTile p (6, 4) Atlas ]
         else []
+
+img50Tile : (Int, Int) -> (Int, Int) -> Html Msg
+img50Tile (ix, iy) (px, py) =
+  svg
+    [ x (String.fromInt (ix * 32))
+    , y (String.fromInt (iy * 32))
+    , width "32"
+    , height "32"
+    , viewBox (String.fromInt (50 * px) ++ " " ++ String.fromInt (50 * py) ++ " 50 50")
+    ]
+    [ Svg.image [ xlinkHref "/assets/kenney/sheet_white1x.png" ] [] ]
 
 imgTile : (Int, Int) -> (Int, Int) -> Image -> Html Msg
 imgTile (ix, iy) (px, py) image =

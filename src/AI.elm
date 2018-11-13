@@ -9,16 +9,16 @@ roachAI : Creature -> Room -> Room
 roachAI coord level =
   if List.member coord level.creatures
     then
-      let dx = sign <| (modBy level.width level.playerCoord) - (modBy level.width coord)
-          dy = level.width * sign ((level.playerCoord // level.width) - (coord // level.width))
-          directMoves =
-            (++)
-              [dx + dy + coord]
-              (List.sortBy (squareDistanceToPlayer level) [dy + coord, dx + coord])
-          newCoord =
-            case List.filter (\ i -> canMoveTo i level) directMoves of
-              freeCoord :: _ -> freeCoord
-              _ -> coord
+      let
+        dx = sign <| (modBy level.width level.playerCoord) - (modBy level.width coord)
+        dy = level.width * sign ((level.playerCoord // level.width) - (coord // level.width))
+        directMoves =
+          (dx + dy + coord) ::
+          (List.sortBy (squareDistanceToPlayer level) [dy + coord, dx + coord])
+        newCoord =
+          case List.filter (canMoveTo coord level) directMoves of
+            freeCoord :: _ -> freeCoord
+            _ -> coord
       in
       { level
       | creatures = newCoord :: List.filter ((/=) coord) level.creatures
@@ -34,3 +34,7 @@ squareDistanceToPlayer level coords =
     (dx, dy) = (px - x, py - y)
   in
     dx * dx + dy * dy
+
+canMoveTo : Coord -> Room -> Coord -> Bool
+canMoveTo prevCoord level coord =
+  canPlayerMoveTo prevCoord level coord && level.swordPos /= coord

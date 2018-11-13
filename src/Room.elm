@@ -23,6 +23,7 @@ type Tile
   | Orb (List (ObsticalId, OrbAction))
   | Checkpoint
   | Obstical ObsticalId ObsticalState
+  | Arrow Dir
 
 type alias Creature = Coord
 
@@ -69,6 +70,17 @@ dirDelta dir =
     W  -> (-1, 0)
     NW -> (-1, -1)
 
+deltaDir : Point -> Dir
+deltaDir (dx, dy) =
+  if dx > 0 && dy > 0 then SE
+  else if dx > 0 && dy < 0 then NE
+  else if dx > 0 then E
+  else if dx < 0 && dy > 0 then SW
+  else if dx < 0 && dy < 0 then NW
+  else if dx < 0 then W
+  else if dy > 0 then S
+  else N -- dy < 0
+
 dirLeft : Dir -> Dir
 dirLeft dir =
   case dir of
@@ -107,7 +119,7 @@ playerMoveDir dir level =
     (x, y) = dirPoint (px, py) dir
     (lx, ly) = dirDelta dir
   in
-    if canPlayerMoveTo destPos level
+    if canPlayerMoveTo level.playerCoord level destPos
     then Move { level | playerCoord = destPos }
     else if x >= 0 && y >= 0 && x < level.width && y < level.height
       then Move level
@@ -120,14 +132,11 @@ playerMoveDir dir level =
           , modBy level.height (py + snd delta)
           )
 
-canMoveTo : Coord -> Room -> Bool
-canMoveTo coord level =
-  canPlayerMoveTo coord level && level.swordPos /= coord
-
-canPlayerMoveTo : Coord -> Room -> Bool
-canPlayerMoveTo coord level =
+canPlayerMoveTo : Coord -> Room -> Coord -> Bool
+canPlayerMoveTo prevCoord level coord =
   let
     isUntaken = List.isEmpty <| List.filter ((==) coord) level.creatures
+    dir = deltaDir (sub (toCoords level.width coord) (toCoords level.width prevCoord))
   in
   case Array.get coord level.blueprint of
     Nothing -> False
@@ -137,6 +146,15 @@ canPlayerMoveTo coord level =
     Just Checkpoint -> isUntaken
     Just (Obstical _ Pushed) -> False
     Just (Obstical _ InGround) -> isUntaken
+
+    Just (Arrow N) -> isUntaken && not (List.member dir [SW, S, SE])
+    Just (Arrow S) -> isUntaken && not (List.member dir [NW, N, NE])
+    Just (Arrow W) -> isUntaken && not (List.member dir [NE, E, SE])
+    Just (Arrow E) -> isUntaken && not (List.member dir [NW, W, SW])
+    Just (Arrow NE) -> isUntaken && not (List.member dir [W, S, SW])
+    Just (Arrow NW) -> isUntaken && not (List.member dir [E, S, SE])
+    Just (Arrow SE) -> isUntaken && not (List.member dir [W, N, NW])
+    Just (Arrow SW) -> isUntaken && not (List.member dir [E, N, NE])
 
 buildSwordPos : Room -> Room
 buildSwordPos level =
