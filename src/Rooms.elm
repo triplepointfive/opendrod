@@ -93,12 +93,12 @@ level2 (px, py) dir =
           , "##############   #####################"
           , "##############   #####################"
           , "##############   #####################"
-          , "##############   #####################"
-          , "##############   #####################"
-          , "##############   #####################"
-          , "##############   #####################"
-          , "##############   #####################"
-          , "##############   #####################"
+          , "##############   #########            "
+          , "##############   #########            "
+          , "##############   #########            "
+          , "##############   #########   #########"
+          , "##############   #########   #########"
+          , "##############   #########   #########"
           ]
           []
   in
@@ -118,16 +118,16 @@ level3 : Point -> Dir -> Room
 level3 (px, py) dir =
   let blueprint =
         buildBlueprint
-          [ "##############   #####################"
-          , "#############   ######################"
-          , "############   #######################"
-          , "###########   ########################"
-          , "##########   #########################"
-          , "##########   #########################"
-          , "##########   #########################"
-          , "##########   #########################"
-          , "#########   ##########################"
-          , "########   ###########################"
+          [ "##############   #########   #########"
+          , "#############   ##########   #########"
+          , "############   ###########   #########"
+          , "###########   ############   #########"
+          , "##########   #############   #########"
+          , "##########   #############   #########"
+          , "##########   #############   #########"
+          , "##########   #############   #########"
+          , "#########   ##############   #########"
+          , "########   ###############   #########"
           , "#####         #########         ######"
           , "#####         #########         ######"
           , "#####  N J B  #########  NJJJB  ######"
@@ -194,44 +194,57 @@ buildWalls blueprint width =
     layer = 0
 
     tileToWall coord tile =
-      let w dir = Maybe.withDefault Wall (Array.get (dirCoord width coord dir) blueprint) == Wall
+      let
+        w dir =
+          if modBy width coord == 0 && List.member dir [W, NW, SW] then True
+          else Maybe.withDefault Wall (Array.get (dirCoord width coord dir) blueprint) == Wall
       in
       case tile of
         Wall ->
           let walls = [w N, w NE, w E, w SE, w S, w SW, w W, w NW] in
           case walls of
+            -- Fully surrounded
             [True, True, True, True, True, True, True, True] -> (-1, -1)
 
+            -- Corners
             [True, False, True, True, True, True, True, True] -> (2, layer)
             [True, True, True, False, True, True, True, True] -> (3, layer)
             [True, True, True, True, True, False, True, True] -> (4, layer)
             [True, True, True, True, True, True, True, False] -> (5, layer)
 
+            -- Corners
             [True, True, True, True, False, False, False, False] -> (2, layer)
             [False, True, True, True, True, False, False, False] -> (3, layer)
             [False, False, False, False, True, True, True, True] -> (4, layer)
             [True, False, False, False, False, True, True, True] -> (5, layer)
 
+            -- Corners
             [True, True, True, False, False, False, False, False] -> (2, layer)
             [False, False, True, True, True, False, False, False] -> (3, layer)
             [False, False, False, False, True, True, True, False] -> (4, layer)
             [True, False, False, False, False, False, True, True] -> (5, layer)
 
-            [True, False, True, False, True, True, True, True] -> (6, layer)
-            [True, True, True, True, True, False, True, False] -> (7, layer)
-
+            -- Horizontal
             [True, True, True, _, False, _, True, True] -> (0, layer)
             [False, _, True, True, True, True, True, _] -> (0, layer)
             [False, _, True, _, False, _, True, _] -> (0, layer)
 
+            -- Vertical
             [True, _, False, _, True, True, True, True] -> (1, layer)
             [True, True, True, True, True, _, False, _] -> (1, layer)
             [True, _, False, _, True, _, False, _] -> (1, layer)
 
-            [True, _, True, _, _, _, _, _] -> (2, layer)
-            [_, _, True, _, True, _, _, _] -> (3, layer)
-            [_, _, _, _, True, _, True, _] -> (4, layer)
-            [True, _, _, _, _, _, True, _] -> (5, layer)
+            -- T blocks
+            [True, False, True, False, True, True, True, True] -> (6, layer)
+            [True, True, True, True, True, False, True, False] -> (7, layer)
+            [False, _, True, _, True, _, True, _] -> (8, layer)
+            [True, _, True, _, False, _, True, _] -> (9, layer)
+
+            -- Corners
+            [True, _, True, _, False, _, False, _] -> (2, layer)
+            [False, _, True, _, True, _, False, _] -> (3, layer)
+            [False, _, False, _, True, _, True, _] -> (4, layer)
+            [True, _, False, _, False, _, True, _] -> (5, layer)
 
             _ -> if (List.length <| List.filter w [N, E, S, W]) == 1
               then (12, layer) else (3, 4)

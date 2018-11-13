@@ -105,6 +105,18 @@ dirRight dir =
     W  -> NW
     NW -> N
 
+oppositeDir : Dir -> Dir -> Bool
+oppositeDir d1 d2 =
+  case d1 of
+    N -> List.member d2 [SW, S, SE]
+    S -> List.member d2 [NW, N, NE]
+    W -> List.member d2 [NE, E, SE]
+    E -> List.member d2 [NW, W, SW]
+    NE -> List.member d2 [W, S, SW]
+    NW -> List.member d2 [E, S, SE]
+    SE -> List.member d2 [W, N, NW]
+    SW -> List.member d2 [E, N, NE]
+
 turn : (Dir -> Dir) -> Room -> Room
 turn newDir level =
   { level | playerDir = newDir level.playerDir }
@@ -139,16 +151,8 @@ canPlayerMoveTo prevCoord level coord =
     dir = deltaDir (sub (toCoords level.width coord) (toCoords level.width prevCoord))
 
     canLeave = case Array.get prevCoord level.blueprint of
-      Just (Arrow N) -> not (List.member dir [SW, S, SE])
-      Just (Arrow S) -> not (List.member dir [NW, N, NE])
-      Just (Arrow W) -> not (List.member dir [NE, E, SE])
-      Just (Arrow E) -> not (List.member dir [NW, W, SW])
-      Just (Arrow NE) -> not (List.member dir [W, S, SW])
-      Just (Arrow NW) -> not (List.member dir [E, S, SE])
-      Just (Arrow SE) -> not (List.member dir [W, N, NW])
-      Just (Arrow SW) -> not (List.member dir [E, N, NE])
+      Just (Arrow d) -> not (oppositeDir d dir)
       _ -> True
-
   in
   canLeave && isUntaken && case Array.get coord level.blueprint of
     Nothing -> False
@@ -158,15 +162,7 @@ canPlayerMoveTo prevCoord level coord =
     Just Checkpoint -> True
     Just (Obstical _ Pushed) -> False
     Just (Obstical _ InGround) -> True
-
-    Just (Arrow N) -> not (List.member dir [SW, S, SE])
-    Just (Arrow S) -> not (List.member dir [NW, N, NE])
-    Just (Arrow W) -> not (List.member dir [NE, E, SE])
-    Just (Arrow E) -> not (List.member dir [NW, W, SW])
-    Just (Arrow NE) -> not (List.member dir [W, S, SW])
-    Just (Arrow NW) -> not (List.member dir [E, S, SE])
-    Just (Arrow SE) -> not (List.member dir [W, N, NW])
-    Just (Arrow SW) -> not (List.member dir [E, N, NE])
+    Just (Arrow d) -> not (oppositeDir d dir)
 
 buildSwordPos : Room -> Room
 buildSwordPos level =
