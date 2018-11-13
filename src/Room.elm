@@ -137,24 +137,36 @@ canPlayerMoveTo prevCoord level coord =
   let
     isUntaken = List.isEmpty <| List.filter ((==) coord) level.creatures
     dir = deltaDir (sub (toCoords level.width coord) (toCoords level.width prevCoord))
+
+    canLeave = case Array.get prevCoord level.blueprint of
+      Just (Arrow N) -> not (List.member dir [SW, S, SE])
+      Just (Arrow S) -> not (List.member dir [NW, N, NE])
+      Just (Arrow W) -> not (List.member dir [NE, E, SE])
+      Just (Arrow E) -> not (List.member dir [NW, W, SW])
+      Just (Arrow NE) -> not (List.member dir [W, S, SW])
+      Just (Arrow NW) -> not (List.member dir [E, S, SE])
+      Just (Arrow SE) -> not (List.member dir [W, N, NW])
+      Just (Arrow SW) -> not (List.member dir [E, N, NE])
+      _ -> True
+
   in
-  case Array.get coord level.blueprint of
+  canLeave && isUntaken && case Array.get coord level.blueprint of
     Nothing -> False
-    Just Floor -> isUntaken
+    Just Floor -> True
     Just Wall -> False
     Just (Orb _) -> False
-    Just Checkpoint -> isUntaken
+    Just Checkpoint -> True
     Just (Obstical _ Pushed) -> False
-    Just (Obstical _ InGround) -> isUntaken
+    Just (Obstical _ InGround) -> True
 
-    Just (Arrow N) -> isUntaken && not (List.member dir [SW, S, SE])
-    Just (Arrow S) -> isUntaken && not (List.member dir [NW, N, NE])
-    Just (Arrow W) -> isUntaken && not (List.member dir [NE, E, SE])
-    Just (Arrow E) -> isUntaken && not (List.member dir [NW, W, SW])
-    Just (Arrow NE) -> isUntaken && not (List.member dir [W, S, SW])
-    Just (Arrow NW) -> isUntaken && not (List.member dir [E, S, SE])
-    Just (Arrow SE) -> isUntaken && not (List.member dir [W, N, NW])
-    Just (Arrow SW) -> isUntaken && not (List.member dir [E, N, NE])
+    Just (Arrow N) -> not (List.member dir [SW, S, SE])
+    Just (Arrow S) -> not (List.member dir [NW, N, NE])
+    Just (Arrow W) -> not (List.member dir [NE, E, SE])
+    Just (Arrow E) -> not (List.member dir [NW, W, SW])
+    Just (Arrow NE) -> not (List.member dir [W, S, SW])
+    Just (Arrow NW) -> not (List.member dir [E, S, SE])
+    Just (Arrow SE) -> not (List.member dir [W, N, NW])
+    Just (Arrow SW) -> not (List.member dir [E, N, NE])
 
 buildSwordPos : Room -> Room
 buildSwordPos level =
