@@ -24,6 +24,12 @@ main = Browser.element
   , subscriptions = subscriptions
   }
 
+tileDim : Int
+tileDim = 32
+
+tileD : String
+tileD = String.fromInt tileDim
+
 type alias Model =
   { level : Room
   , playerAlive : Bool
@@ -314,10 +320,10 @@ tileBackground offset level i tile =
         [ imgTile displayPos (4, 0) BaseMeph ]
       Checkpoint ->
         [ svg
-          [ x (String.fromInt (fst displayPos * 32))
-          , y (String.fromInt (snd displayPos * 32))
-          , width "32"
-          , height "32"
+          [ x (String.fromInt (fst displayPos * tileDim))
+          , y (String.fromInt (snd displayPos * tileDim))
+          , width tileD
+          , height tileD
           , viewBox "400 400 50 50"
           ]
           [ Svg.image [ xlinkHref "/assets/kenney/sheet_white1x.png" ] [] ]
@@ -356,10 +362,10 @@ tileObjects offset i level =
 img50Tile : (Int, Int) -> (Int, Int) -> Html Msg
 img50Tile (ix, iy) (px, py) =
   svg
-    [ x (String.fromInt (ix * 32))
-    , y (String.fromInt (iy * 32))
-    , width "32"
-    , height "32"
+    [ x (String.fromInt (ix * tileDim))
+    , y (String.fromInt (iy * tileDim))
+    , width tileD
+    , height tileD
     , viewBox (String.fromInt (50 * px) ++ " " ++ String.fromInt (50 * py) ++ " 50 50")
     ]
     [ Svg.image [ xlinkHref "/assets/kenney/sheet_white1x.png" ] [] ]
@@ -367,11 +373,11 @@ img50Tile (ix, iy) (px, py) =
 imgTile : (Int, Int) -> (Int, Int) -> Image -> Html Msg
 imgTile (ix, iy) (px, py) image =
   svg
-    [ x (String.fromInt (ix * 32))
-    , y (String.fromInt (iy * 32))
-    , width "32"
-    , height "32"
-    , viewBox (String.fromInt (32 * px) ++ " " ++ String.fromInt (32 * py) ++ " 32 32")
+    [ x (String.fromInt (ix * tileDim))
+    , y (String.fromInt (iy * tileDim))
+    , width tileD
+    , height tileD
+    , viewBox (String.fromInt (tileDim * px) ++ " " ++ String.fromInt (tileDim * py) ++ " 32 32")
     ]
     [ Svg.image
       [ xlinkHref <| case image of
@@ -387,6 +393,14 @@ activeEffects model =
   case model.effect of
     Just (TileClicked (Orb actions)) ->
       [
-        rect [ x "0", y "0", width "32", height "32", fillOpacity "0.5", fill "yellow" ] []
+        rect
+          [ x "0"
+          , y "0"
+          , width tileD
+          , height tileD
+          , fillOpacity "0.5"
+          , fill "yellow"
+          ]
+          []
       ]
     _ -> []
