@@ -1,4 +1,4 @@
-module Level exposing (..)
+module Room exposing (..)
 
 import Array
 
@@ -26,7 +26,7 @@ type Tile
 
 type alias Creature = Coord
 
-type alias Level =
+type alias Room =
   { blueprint : Array.Array Tile
   , creatures : List Creature
   , swordPos : Coord
@@ -93,13 +93,13 @@ dirRight dir =
     W  -> NW
     NW -> N
 
-turn : (Dir -> Dir) -> Level -> Level
+turn : (Dir -> Dir) -> Room -> Room
 turn newDir level =
   { level | playerDir = newDir level.playerDir }
 
-type MoveResult = Move Level | Leave Point Point
+type MoveResult = Move Room | Leave Point Point
 
-playerMoveDir : Dir -> Level -> MoveResult
+playerMoveDir : Dir -> Room -> MoveResult
 playerMoveDir dir level =
   let
     destPos = dirCoord level.width level.playerCoord dir
@@ -120,11 +120,11 @@ playerMoveDir dir level =
           , modBy level.height (py + snd delta)
           )
 
-canMoveTo : Coord -> Level -> Bool
+canMoveTo : Coord -> Room -> Bool
 canMoveTo coord level =
   canPlayerMoveTo coord level && level.swordPos /= coord
 
-canPlayerMoveTo : Coord -> Level -> Bool
+canPlayerMoveTo : Coord -> Room -> Bool
 canPlayerMoveTo coord level =
   let
     isUntaken = List.isEmpty <| List.filter ((==) coord) level.creatures
@@ -138,22 +138,22 @@ canPlayerMoveTo coord level =
     Just (Obstical _ Pushed) -> False
     Just (Obstical _ InGround) -> isUntaken
 
-buildSwordPos : Level -> Level
+buildSwordPos : Room -> Room
 buildSwordPos level =
   { level
   | swordPos = dirCoord level.width level.playerCoord level.playerDir
   }
 
-checkSword : Level -> Level
+checkSword : Room -> Room
 checkSword = swordToggle << swordKill
 
-swordKill : Level -> Level
+swordKill : Room -> Room
 swordKill level =
   { level
   | creatures = List.filter ((/=) level.swordPos) level.creatures
   }
 
-swordToggle : Level -> Level
+swordToggle : Room -> Room
 swordToggle level =
   case Array.get level.swordPos level.blueprint of
     Just (Orb actions) ->
@@ -168,26 +168,30 @@ orbAction actions tile =
     Obstical id state ->
       case List.filter (\(i, _) -> i == id) actions of
         (_, action) :: _ ->
-          case action of
-            Close -> Obstical id Pushed
-            Open -> Obstical id InGround
-            Toggle -> Obstical id (if state == Pushed then InGround else Pushed)
+          Obstical id <| case action of
+            Close -> Pushed
+            Open -> InGround
+            Toggle -> if state == Pushed then InGround else Pushed
         _ -> tile
     _ -> tile
 
-concatLevels : Level -> Level -> Point -> Level
+concatLevels : Room -> Room -> Point -> Room
 concatLevels origin addend (dx, dy) =
+  let size = 32 * 38 in
   if dy < 0 then
     { origin
     | blueprint = Array.append addend.blueprint origin.blueprint
     , height    = origin.height + origin.height
     , wallTiles = Array.append addend.wallTiles origin.wallTiles
-    , creatures = origin.creatures ++ addend.creatures
+    , creatures = addend.creatures ++ List.map ((+) size) origin.creatures
+
+    , swordPos  = origin.swordPos + size
+    , playerCoord = origin.playerCoord + size
     }
   else
     { origin
     | blueprint = Array.append origin.blueprint addend.blueprint
     , height    = origin.height + origin.height
     , wallTiles = Array.append origin.wallTiles addend.wallTiles
-    , creatures = origin.creatures ++ addend.creatures
+    , creatures = origin.creatures ++ List.map ((+) size) addend.creatures
     }

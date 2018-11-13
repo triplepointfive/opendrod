@@ -13,8 +13,8 @@ import Svg.Attributes exposing (..)
 import Time
 
 import AI exposing (..)
-import Level exposing (..)
-import Levels exposing (..)
+import Room exposing (..)
+import Rooms exposing (..)
 import Utils exposing (..)
 
 main = Browser.element
@@ -25,17 +25,17 @@ main = Browser.element
   }
 
 type alias Model =
-  { level : Level
+  { level : Room
   , playerAlive : Bool
   , animationTick : Int
-  , backsteps : List Level
-  , checkpoints : List Level
+  , backsteps : List Room
+  , checkpoints : List Room
   , justLoaded : Bool
   , effect : Maybe Effect
-  , levelsRepository : Dict.Dict (Int, Int) (Point -> Dir -> Level)
+  , levelsRepository : Dict.Dict (Int, Int) (Point -> Dir -> Room)
   }
 
-type Effect = TileClicked Tile | ChangeRoom Level Point Int Point
+type Effect = TileClicked Tile | ChangeRoom Room Point Int Point
 
 type Image = Atlas | BaseMeph | Constructions | Lomem
 
@@ -146,7 +146,7 @@ creatureTurn creature model =
     then onLevel (roachAI creature) model
     else model
 
-withMAction : (Level -> MoveResult) -> Model -> Model
+withMAction : (Room -> MoveResult) -> Model -> Model
 withMAction action model =
   case action model.level of
     Move level -> withAction (const level) model
@@ -165,7 +165,7 @@ withMAction action model =
           }
         Nothing -> withAction (const model.level) model
 
-withAction : (Level -> Level) -> Model -> Model
+withAction : (Room -> Room) -> Model -> Model
 withAction action model =
   if model.playerAlive then
     let
@@ -206,7 +206,7 @@ postProcessTile model =
 
     _ -> model
 
-onLevel : (Level -> Level) -> Model -> Model
+onLevel : (Room -> Room) -> Model -> Model
 onLevel f model =
   { model
   | level = f model.level
@@ -220,11 +220,15 @@ isAlivePlayer model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.batch
-    [ onKeyDown keyDecoder
+  Sub.batch <| case model.effect of
+    Just (ChangeRoom _ _ _ _) ->
+      [ onAnimationFrameDelta AnimationRate
+      ]
+
+    _ ->
+      [ onKeyDown keyDecoder
+      ]
     -- , Time.every 500 (const Tick)
-    , onAnimationFrameDelta AnimationRate
-    ]
 
 keyDecoder : Decode.Decoder Msg
 keyDecoder =
@@ -244,7 +248,7 @@ view model =
         , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
         ]
 
-drawRoom : Point -> Level -> Html Msg
+drawRoom : Point -> Room -> Html Msg
 drawRoom offset level =
   svg
     [ width "1216"
@@ -277,11 +281,11 @@ visible (ox, oy) (i, tile) =
   in
     ox <= x && x < ox + 38 && oy <= y && y < oy + 32
 
-tileTags : Point -> Level -> (Coord, Tile) -> List (Html Msg)
+tileTags : Point -> Room -> (Coord, Tile) -> List (Html Msg)
 tileTags offset level (i, tag) =
   tileBackground offset level i tag ++ tileObjects offset i level
 
-tileBackground : Point -> Level -> Coord -> Tile -> List (Html Msg)
+tileBackground : Point -> Room -> Coord -> Tile -> List (Html Msg)
 tileBackground offset level i tile =
   let
     (px, py) = toCoords level.width i
@@ -324,7 +328,7 @@ tileBackground offset level i tile =
   in
     (if pos == (-1, -1) then [] else [ imgTile displayPos pos tileSet ]) ++ tileItems
 
-tileObjects : Point -> Coord -> Level -> List (Html Msg)
+tileObjects : Point -> Coord -> Room -> List (Html Msg)
 tileObjects offset i level =
   let p = Utils.sub (toCoords level.width i) offset
   in

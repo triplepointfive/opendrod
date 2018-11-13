@@ -1,11 +1,11 @@
 module AI exposing (..)
 
-import Level exposing (..)
+import Room exposing (..)
 import Utils exposing (..)
 
 import Debug
 
-roachAI : Creature -> Level -> Level
+roachAI : Creature -> Room -> Room
 roachAI coord level =
   if List.member coord level.creatures
     then
@@ -26,7 +26,7 @@ roachAI coord level =
     else
       level
 
-squareDistanceToPlayer : Level -> Creature -> Int
+squareDistanceToPlayer : Room -> Creature -> Int
 squareDistanceToPlayer level coords =
   let
     (px, py) = toCoords level.width level.playerCoord
