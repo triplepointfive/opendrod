@@ -7885,7 +7885,7 @@ var author$project$Main$img50Tile = F2(
 					elm$svg$Svg$image,
 					_List_fromArray(
 						[
-							elm$svg$Svg$Attributes$xlinkHref('/assets/kenney/sheet_white1x.png')
+							elm$svg$Svg$Attributes$xlinkHref('assets/kenney/sheet_white1x.png')
 						]),
 					_List_Nil)
 				]));
@@ -7919,13 +7919,13 @@ var author$project$Main$imgTile = F3(
 							function () {
 								switch (image) {
 									case 0:
-										return '/assets/underworld_load/underworld_load-atlas-32x32.png';
+										return 'assets/underworld_load/underworld_load-atlas-32x32.png';
 									case 1:
-										return '/assets/MephTileset/_Meph_32x32.png';
+										return 'assets/MephTileset/_Meph_32x32.png';
 									case 2:
-										return '/assets/MephTileset/_Meph_constructions.png';
+										return 'assets/MephTileset/_Meph_constructions.png';
 									default:
-										return '/assets/underworld_load/underworld_load-lomem-32x32.png';
+										return 'assets/underworld_load/underworld_load-lomem-32x32.png';
 								}
 							}())
 						]),
@@ -8020,7 +8020,7 @@ var author$project$Main$tileBackground = F4(
 									elm$svg$Svg$image,
 									_List_fromArray(
 										[
-											elm$svg$Svg$Attributes$xlinkHref('/assets/kenney/sheet_white1x.png')
+											elm$svg$Svg$Attributes$xlinkHref('assets/kenney/sheet_white1x.png')
 										]),
 									_List_Nil)
 								]))
