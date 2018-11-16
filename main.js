@@ -7921,9 +7921,9 @@ var author$project$Main$imgTile = F3(
 									case 0:
 										return 'assets/underworld_load/underworld_load-atlas-32x32.png';
 									case 1:
-										return 'assets/MephTileset/_Meph_32x32.png';
+										return 'assets/MephTileset/Meph_32x32.png';
 									case 2:
-										return 'assets/MephTileset/_Meph_constructions.png';
+										return 'assets/MephTileset/Meph_constructions.png';
 									default:
 										return 'assets/underworld_load/underworld_load-lomem-32x32.png';
 								}
