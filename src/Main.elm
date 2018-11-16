@@ -326,7 +326,7 @@ tileBackground offset level i tile =
           , height tileD
           , viewBox "400 400 50 50"
           ]
-          [ Svg.image [ xlinkHref "/assets/kenney/sheet_white1x.png" ] [] ]
+          [ Svg.image [ xlinkHref "assets/kenney/sheet_white1x.png" ] [] ]
         ]
       Obstical _ InGround ->
         [ imgTile displayPos (7, 12) Atlas ]
@@ -368,7 +368,7 @@ img50Tile (ix, iy) (px, py) =
     , height tileD
     , viewBox (String.fromInt (50 * px) ++ " " ++ String.fromInt (50 * py) ++ " 50 50")
     ]
-    [ Svg.image [ xlinkHref "/assets/kenney/sheet_white1x.png" ] [] ]
+    [ Svg.image [ xlinkHref "assets/kenney/sheet_white1x.png" ] [] ]
 
 imgTile : (Int, Int) -> (Int, Int) -> Image -> Html Msg
 imgTile (ix, iy) (px, py) image =
@@ -381,10 +381,10 @@ imgTile (ix, iy) (px, py) image =
     ]
     [ Svg.image
       [ xlinkHref <| case image of
-          Atlas -> "/assets/underworld_load/underworld_load-atlas-32x32.png"
-          BaseMeph -> "/assets/MephTileset/_Meph_32x32.png"
-          Constructions -> "/assets/MephTileset/_Meph_constructions.png"
-          Lomem -> "/assets/underworld_load/underworld_load-lomem-32x32.png"
+          Atlas -> "assets/underworld_load/underworld_load-atlas-32x32.png"
+          BaseMeph -> "assets/MephTileset/Meph_32x32.png"
+          Constructions -> "assets/MephTileset/Meph_constructions.png"
+          Lomem -> "assets/underworld_load/underworld_load-lomem-32x32.png"
       ] []
     ]
 
