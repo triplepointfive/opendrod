@@ -41,7 +41,7 @@ type alias Model =
   , levelsRepository : Dict.Dict (Int, Int) (Point -> Dir -> Room)
   }
 
-type Effect = TileClicked Tile | ChangeRoom Room Point Int Point
+type Effect = TileClicked Tile | ChangeRoom Room Float Point
 
 type Image = Atlas | BaseMeph | Constructions | Lomem
 
@@ -121,10 +121,11 @@ tick model =
   }
 
 tickEffect : Float -> Model -> Model
-tickEffect _ model =
+tickEffect tickDelta model =
   case model.effect of
-    Just (ChangeRoom level offset s delta) ->
-      if s >= 32
+    Just (ChangeRoom level s delta) ->
+      let resState = s + tickDelta / 900 in
+      if resState >= 1
         then
           { model
           | effect = Nothing
@@ -135,7 +136,7 @@ tickEffect _ model =
           }
         else
           { model
-          | effect = Just <| ChangeRoom level (add offset delta) (s + 1) delta
+          | effect = Just <| ChangeRoom level resState delta
           }
 
     _ -> model
@@ -164,7 +165,6 @@ withMAction action model =
           { model
           | effect = Just <| ChangeRoom
               nextLevel
-              (Basics.max 0 (-38 * fst delta), Basics.max 0 (-32 * snd delta))
               0
               delta
           , level = concatLevels model.level nextLevel delta
@@ -227,7 +227,7 @@ isAlivePlayer model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch <| case model.effect of
-    Just (ChangeRoom _ _ _ _) ->
+    Just (ChangeRoom _ _ _) ->
       [ onAnimationFrameDelta AnimationRate
       ]
 
@@ -245,21 +245,27 @@ view : Model -> Html Msg
 view model =
   div []
     <| case model.effect of
-      Just (ChangeRoom _ offset _ _) ->
-        [ drawRoom offset model.level
+      Just (ChangeRoom _ c (dx, dy)) ->
+        let f s max = max * s * sin( c * pi / 2 + pi / 4 * (s - 1)) in
+        -- let f s max = max * s * (0.5 * (s - 1) + c) in
+        [ drawRoom
+          ( round <| f (toFloat dx) 1216
+          , round <| f (toFloat dy) 1024
+          )
+          model.level
         , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
         ]
       _ ->
-        [ lazy (drawRoom (0, 0)) model.level
+        [ drawRoom (0, 0) model.level
         , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
         ]
 
 drawRoom : Point -> Room -> Html Msg
-drawRoom offset level =
+drawRoom (dx, dy) level =
   svg
     [ width "1216"
     , height "1024"
-    , viewBox "0 0 1216 1024"
+    , viewBox <| String.fromInt dx ++ " " ++ String.fromInt dy ++ " 1216 1024"
     , Html.Attributes.style "display" "block"
     ]
 
@@ -267,25 +273,25 @@ drawRoom offset level =
       (rect
         [ x "0"
         , y "0"
-        , width "1216"
-        , height "1024"
+        , width <| String.fromInt (1216 * 2)
+        , height <| String.fromInt (1024 * 2)
         , fill "rgb(75, 73, 75)"
         ] []) ::
       List.concat (
         Array.toList
-        <| Array.map (tileTags offset level)
-        <| Array.filter (visible level.width offset)
+        <| Array.map (tileTags (0, 0) level)
+        <| Array.filter (visible level.width (0, 0))
         <| Array.indexedMap pair level.blueprint
         )
       -- ++ activeEffects model
     )
 
 visible : Int -> Point -> (Coord, Tile) -> Bool
-visible width (ox, oy) (i, tile) =
-  let
-    (x, y) = toCoords width i
-  in
-    ox <= x && x < ox + width && oy <= y && y < oy + width
+visible width (ox, oy) (i, tile) = True
+--   let
+--     (x, y) = toCoords width i
+--   in
+--     ox <= x && x < ox + width && oy <= y && y < oy + width
 
 tileTags : Point -> Room -> (Coord, Tile) -> List (Html Msg)
 tileTags offset level (i, tag) =
