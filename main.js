@@ -6681,28 +6681,20 @@ var author$project$Main$tick = function (model) {
 		model,
 		{L: model.L + 1});
 };
-var author$project$Main$ChangeRoom = F4(
-	function (a, b, c, d) {
-		return {$: 1, a: a, b: b, c: c, d: d};
-	});
-var author$project$Utils$add = F2(
-	function (_n0, _n1) {
-		var x = _n0.a;
-		var y = _n0.b;
-		var dx = _n1.a;
-		var dy = _n1.b;
-		return _Utils_Tuple2(x + dx, y + dy);
+var author$project$Main$ChangeRoom = F3(
+	function (a, b, c) {
+		return {$: 1, a: a, b: b, c: c};
 	});
 var author$project$Main$tickEffect = F2(
-	function (_n0, model) {
-		var _n1 = model.h;
-		if ((!_n1.$) && (_n1.a.$ === 1)) {
-			var _n2 = _n1.a;
-			var level = _n2.a;
-			var offset = _n2.b;
-			var s = _n2.c;
-			var delta = _n2.d;
-			return (s >= 32) ? _Utils_update(
+	function (tickDelta, model) {
+		var _n0 = model.h;
+		if ((!_n0.$) && (_n0.a.$ === 1)) {
+			var _n1 = _n0.a;
+			var level = _n1.a;
+			var s = _n1.b;
+			var delta = _n1.c;
+			var resState = s + (tickDelta / 900);
+			return (resState >= 1) ? _Utils_update(
 				model,
 				{
 					x: _List_Nil,
@@ -6715,12 +6707,7 @@ var author$project$Main$tickEffect = F2(
 				model,
 				{
 					h: elm$core$Maybe$Just(
-						A4(
-							author$project$Main$ChangeRoom,
-							level,
-							A2(author$project$Utils$add, offset, delta),
-							s + 1,
-							delta))
+						A3(author$project$Main$ChangeRoom, level, resState, delta))
 				});
 		} else {
 			return model;
@@ -7554,18 +7541,18 @@ var author$project$Room$concatLevels = F3(
 				w: origin.w + origin.w
 			})));
 	});
+var author$project$Utils$add = F2(
+	function (_n0, _n1) {
+		var x = _n0.a;
+		var y = _n0.b;
+		var dx = _n1.a;
+		var dy = _n1.b;
+		return _Utils_Tuple2(x + dx, y + dy);
+	});
 var author$project$Utils$const = F2(
 	function (x, _n0) {
 		return x;
 	});
-var author$project$Utils$fst = function (_n0) {
-	var a = _n0.a;
-	return a;
-};
-var author$project$Utils$snd = function (_n0) {
-	var b = _n0.b;
-	return b;
-};
 var author$project$Main$withMAction = F2(
 	function (action, model) {
 		var _n0 = action(model.a);
@@ -7589,20 +7576,7 @@ var author$project$Main$withMAction = F2(
 					model,
 					{
 						h: elm$core$Maybe$Just(
-							A4(
-								author$project$Main$ChangeRoom,
-								nextLevel,
-								_Utils_Tuple2(
-									A2(
-										elm$core$Basics$max,
-										0,
-										(-38) * author$project$Utils$fst(delta)),
-									A2(
-										elm$core$Basics$max,
-										0,
-										(-32) * author$project$Utils$snd(delta))),
-								0,
-								delta)),
+							A3(author$project$Main$ChangeRoom, nextLevel, 0, delta)),
 						a: A3(author$project$Room$concatLevels, model.a, nextLevel, delta)
 					});
 			} else {
@@ -7689,6 +7663,14 @@ var author$project$Room$dirPoint = F2(
 		var dy = _n1.b;
 		return _Utils_Tuple2(x + dx, y + dy);
 	});
+var author$project$Utils$fst = function (_n0) {
+	var a = _n0.a;
+	return a;
+};
+var author$project$Utils$snd = function (_n0) {
+	var b = _n0.b;
+	return b;
+};
 var author$project$Room$playerMoveDir = F2(
 	function (dir, level) {
 		var destPos = A3(author$project$Room$dirCoord, level.w, level.S, dir);
@@ -8176,10 +8158,7 @@ var author$project$Main$visible = F3(
 		var oy = _n0.b;
 		var i = _n1.a;
 		var tile = _n1.b;
-		var _n2 = A2(author$project$Utils$toCoords, width, i);
-		var x = _n2.a;
-		var y = _n2.b;
-		return (_Utils_cmp(ox, x) < 1) && ((_Utils_cmp(x, ox + width) < 0) && ((_Utils_cmp(oy, y) < 1) && (_Utils_cmp(y, oy + width) < 0)));
+		return true;
 	});
 var author$project$Utils$pair = F2(
 	function (a, b) {
@@ -8202,14 +8181,17 @@ var elm$html$Html$Attributes$style = elm$virtual_dom$VirtualDom$style;
 var elm$svg$Svg$rect = elm$svg$Svg$trustedNode('rect');
 var elm$svg$Svg$Attributes$fill = _VirtualDom_attribute('fill');
 var author$project$Main$drawRoom = F2(
-	function (offset, level) {
+	function (_n0, level) {
+		var dx = _n0.a;
+		var dy = _n0.b;
 		return A2(
 			elm$svg$Svg$svg,
 			_List_fromArray(
 				[
 					elm$svg$Svg$Attributes$width('1216'),
 					elm$svg$Svg$Attributes$height('1024'),
-					elm$svg$Svg$Attributes$viewBox('0 0 1216 1024'),
+					elm$svg$Svg$Attributes$viewBox(
+					elm$core$String$fromInt(dx) + (' ' + (elm$core$String$fromInt(dy) + ' 1216 1024'))),
 					A2(elm$html$Html$Attributes$style, 'display', 'block')
 				]),
 			A2(
@@ -8220,8 +8202,10 @@ var author$project$Main$drawRoom = F2(
 						[
 							elm$svg$Svg$Attributes$x('0'),
 							elm$svg$Svg$Attributes$y('0'),
-							elm$svg$Svg$Attributes$width('1216'),
-							elm$svg$Svg$Attributes$height('1024'),
+							elm$svg$Svg$Attributes$width(
+							elm$core$String$fromInt(1216 * 2)),
+							elm$svg$Svg$Attributes$height(
+							elm$core$String$fromInt(1024 * 2)),
 							elm$svg$Svg$Attributes$fill('rgb(75, 73, 75)')
 						]),
 					_List_Nil),
@@ -8229,17 +8213,24 @@ var author$project$Main$drawRoom = F2(
 					elm$core$Array$toList(
 						A2(
 							elm$core$Array$map,
-							A2(author$project$Main$tileTags, offset, level),
+							A2(
+								author$project$Main$tileTags,
+								_Utils_Tuple2(0, 0),
+								level),
 							A2(
 								elm$core$Array$filter,
-								A2(author$project$Main$visible, level.w, offset),
+								A2(
+									author$project$Main$visible,
+									level.w,
+									_Utils_Tuple2(0, 0)),
 								A2(elm$core$Array$indexedMap, author$project$Utils$pair, level.X)))))));
 	});
+var elm$core$Basics$pi = _Basics_pi;
+var elm$core$Basics$round = _Basics_round;
+var elm$core$Basics$sin = _Basics_sin;
 var elm$html$Html$div = _VirtualDom_node('div');
 var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
-var elm$virtual_dom$VirtualDom$lazy = _VirtualDom_lazy;
-var elm$html$Html$Lazy$lazy = elm$virtual_dom$VirtualDom$lazy;
 var author$project$Main$view = function (model) {
 	return A2(
 		elm$html$Html$div,
@@ -8248,10 +8239,24 @@ var author$project$Main$view = function (model) {
 			var _n0 = model.h;
 			if ((!_n0.$) && (_n0.a.$ === 1)) {
 				var _n1 = _n0.a;
-				var offset = _n1.b;
+				var c = _n1.b;
+				var _n2 = _n1.c;
+				var dx = _n2.a;
+				var dy = _n2.b;
+				var f = F2(
+					function (s, max) {
+						return (max * s) * elm$core$Basics$sin(((c * elm$core$Basics$pi) / 2) + ((elm$core$Basics$pi / 4) * (s - 1)));
+					});
 				return _List_fromArray(
 					[
-						A2(author$project$Main$drawRoom, offset, model.a),
+						A2(
+						author$project$Main$drawRoom,
+						_Utils_Tuple2(
+							elm$core$Basics$round(
+								A2(f, dx, 1216)),
+							elm$core$Basics$round(
+								A2(f, dy, 1024))),
+						model.a),
 						A2(
 						elm$html$Html$div,
 						_List_Nil,
@@ -8265,9 +8270,8 @@ var author$project$Main$view = function (model) {
 				return _List_fromArray(
 					[
 						A2(
-						elm$html$Html$Lazy$lazy,
-						author$project$Main$drawRoom(
-							_Utils_Tuple2(0, 0)),
+						author$project$Main$drawRoom,
+						_Utils_Tuple2(0, 0),
 						model.a),
 						A2(
 						elm$html$Html$div,
