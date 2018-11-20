@@ -8,21 +8,23 @@ type alias Coord = Int
 
 type alias ObsticalId = Int
 
+type alias RoomId = Point
+
 type ObsticalState
-  = Pushed
-  | InGround
+  = Closed
+  | Open
 
 type OrbAction
   = Close
   | Toggle
-  | Open
+  | ToOpen
 
 type Tile
   = Wall
   | Floor
   | Orb (List (ObsticalId, OrbAction))
   | Checkpoint
-  | Obstical ObsticalId ObsticalState
+  | Door ObsticalId ObsticalState
   | Arrow Dir
 
 type alias Creature = Coord
@@ -160,8 +162,8 @@ canPlayerMoveTo prevCoord level coord =
     Just Wall -> False
     Just (Orb _) -> False
     Just Checkpoint -> True
-    Just (Obstical _ Pushed) -> False
-    Just (Obstical _ InGround) -> True
+    Just (Door _ Closed) -> False
+    Just (Door _ Open) -> True
     Just (Arrow d) -> not (oppositeDir d dir)
 
 buildSwordPos : Room -> Room
@@ -191,13 +193,13 @@ swordToggle level =
 orbAction : List (ObsticalId, OrbAction) -> Tile -> Tile
 orbAction actions tile =
   case tile of
-    Obstical id state ->
+    Door id state ->
       case List.filter (\(i, _) -> i == id) actions of
         (_, action) :: _ ->
-          Obstical id <| case action of
-            Close -> Pushed
-            Open -> InGround
-            Toggle -> if state == Pushed then InGround else Pushed
+          Door id <| case action of
+            Close -> Closed
+            ToOpen -> Open
+            Toggle -> if state == Closed then Open else Closed
         _ -> tile
     _ -> tile
 

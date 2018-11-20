@@ -15,6 +15,7 @@ import Time
 import AI exposing (..)
 import Room exposing (..)
 import Rooms exposing (..)
+import Level
 import Utils exposing (..)
 
 main = Browser.element
@@ -280,18 +281,10 @@ drawRoom (dx, dy) level =
       List.concat (
         Array.toList
         <| Array.map (tileTags (0, 0) level)
-        <| Array.filter (visible level.width (0, 0))
         <| Array.indexedMap pair level.blueprint
         )
       -- ++ activeEffects model
     )
-
-visible : Int -> Point -> (Coord, Tile) -> Bool
-visible width (ox, oy) (i, tile) = True
---   let
---     (x, y) = toCoords width i
---   in
---     ox <= x && x < ox + width && oy <= y && y < oy + width
 
 tileTags : Point -> Room -> (Coord, Tile) -> List (Html Msg)
 tileTags offset level (i, tag) =
@@ -311,8 +304,8 @@ tileBackground offset level i tile =
       Wall -> Maybe.withDefault background (Array.get i level.wallTiles)
       Orb _ -> background
       Checkpoint -> background
-      Obstical _ Pushed -> background
-      Obstical _ InGround -> background
+      Door _ Closed -> background
+      Door _ Open -> background
       Arrow _ -> background
 
     tileSet = case tile of
@@ -334,9 +327,9 @@ tileBackground offset level i tile =
           ]
           [ Svg.image [ xlinkHref "assets/kenney/sheet_white1x.png" ] [] ]
         ]
-      Obstical _ InGround ->
+      Door _ Open ->
         [ imgTile displayPos (7, 12) Atlas ]
-      Obstical _ Pushed ->
+      Door _ Closed ->
         [ imgTile displayPos (8, 12) Atlas ]
 
       Arrow N -> [img50Tile displayPos (0, 8)]

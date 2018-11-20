@@ -43,12 +43,12 @@ level1 (px, py) dir =
           , "##############   #####################"
           , "##############   #####################"
           ]
-          [ ('a', Orb [(0, Open)])
+          [ ('a', Orb [(0, ToOpen)])
           , ('b', Orb [(1, Toggle), (2, Toggle)])
           , ('c', Orb [(2, Close)])
-          , ('A', Obstical 0 Pushed)
-          , ('B', Obstical 1 InGround)
-          , ('C', Obstical 2 Pushed)
+          , ('A', Door 0 Closed)
+          , ('B', Door 1 Open)
+          , ('C', Door 2 Closed)
           ]
   in
   { blueprint = blueprint
