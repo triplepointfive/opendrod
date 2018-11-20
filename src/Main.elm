@@ -32,7 +32,7 @@ tileD : String
 tileD = String.fromInt tileDim
 
 type alias Model =
-  { level : Room
+  { currentRoom : Room
   , playerAlive : Bool
   , animationTick : Int
   , backsteps : List Room
@@ -51,13 +51,13 @@ type Msg = KeyPress String | Tick | Click Tile | AnimationRate Float
 init : () -> ( Model, Cmd.Cmd Msg )
 init () =
   let
-    level = level2 (36, 27) E -- (6, 14) S -- (15, 0)
+    currentRoom = level2 (36, 27) E -- (6, 14) S -- (15, 0)
   in
-  ( { level = level
+  ( { currentRoom = currentRoom
     , playerAlive = True
     , animationTick = 0
     , backsteps = []
-    , checkpoints = [level]
+    , checkpoints = [currentRoom]
     , justLoaded = False
     , effect = Nothing
     , levelsRepository = Dict.fromList [((0, 0), level1), ((0, 1), level2), ((0, 2), level3), ((1, 1), level4)]
@@ -96,9 +96,9 @@ undo model =
   case model.backsteps of
     x :: xs ->
       { model
-      | level = x
+      | currentRoom = x
       , backsteps = xs
-      , playerAlive = True -- TODO: Consider moving to level
+      , playerAlive = True -- TODO: Consider moving to currentRoom
       }
     _ -> model
 
@@ -107,7 +107,7 @@ loadCheckpoint model =
   case model.checkpoints of
     x :: xs ->
       { model
-      | level = x
+      | currentRoom = x
       , checkpoints = xs
       , justLoaded = True
       , playerAlive = True
@@ -124,20 +124,20 @@ tick model =
 tickEffect : Float -> Model -> Model
 tickEffect tickDelta model =
   case model.effect of
-    Just (ChangeRoom level s delta) ->
+    Just (ChangeRoom room s delta) ->
       let resState = s + tickDelta / 900 in
       if resState >= 1
         then
           { model
           | effect = Nothing
-          , level = level
+          , currentRoom = room
           , backsteps = []
-          , checkpoints = [level]
+          , checkpoints = [room]
           , justLoaded = False
           }
         else
           { model
-          | effect = Just <| ChangeRoom level resState delta
+          | effect = Just <| ChangeRoom room resState delta
           }
 
     _ -> model
@@ -156,21 +156,21 @@ creatureTurn creature model =
 
 withMAction : (Room -> MoveResult) -> Model -> Model
 withMAction action model =
-  case action model.level of
-    Move level -> withAction (const level) model
+  case action model.currentRoom of
+    Move room -> withAction (const room) model
     Leave delta newPlayerPos ->
-      case Dict.get (add model.level.pos delta) model.levelsRepository of
-        Just level ->
-          let nextLevel = level newPlayerPos model.level.playerDir
+      case Dict.get (add model.currentRoom.pos delta) model.levelsRepository of
+        Just room ->
+          let nextLevel = room newPlayerPos model.currentRoom.playerDir
           in
           { model
           | effect = Just <| ChangeRoom
               nextLevel
               0
               delta
-          , level = concatLevels model.level nextLevel delta
+          , currentRoom = concatLevels model.currentRoom nextLevel delta
           }
-        Nothing -> withAction (const model.level) model
+        Nothing -> withAction (const model.currentRoom) model
 
 withAction : (Room -> Room) -> Model -> Model
 withAction action model =
@@ -181,10 +181,10 @@ withAction action model =
         <| isAlivePlayer
         <| onLevel (buildSwordPos << action)
         { model
-        | backsteps = [model.level]
+        | backsteps = [model.currentRoom]
         , checkpoints =
           if model.justLoaded
-            then model.level :: model.checkpoints
+            then model.currentRoom :: model.checkpoints
             else model.checkpoints
         , justLoaded = False
         }
@@ -194,10 +194,10 @@ withAction action model =
           (\creature md -> isAlivePlayer <| creatureTurn creature md)
           actualModel
           <| List.sortBy
-              (squareDistanceToPlayer actualModel.level)
-              actualModel.level.creatures
+              (squareDistanceToPlayer actualModel.currentRoom)
+              actualModel.currentRoom.creatures
     in
-      if afterActionModel.level.playerCoord == model.level.playerCoord
+      if afterActionModel.currentRoom.playerCoord == model.currentRoom.playerCoord
         then afterActionModel
         else postProcessTile afterActionModel
   else
@@ -205,10 +205,10 @@ withAction action model =
 
 postProcessTile : Model -> Model
 postProcessTile model =
-  case Array.get model.level.playerCoord model.level.blueprint of
+  case Array.get model.currentRoom.playerCoord model.currentRoom.blueprint of
     Just Checkpoint ->
       { model
-      | checkpoints = model.level :: model.checkpoints
+      | checkpoints = model.currentRoom :: model.checkpoints
       }
 
     _ -> model
@@ -216,13 +216,13 @@ postProcessTile model =
 onLevel : (Room -> Room) -> Model -> Model
 onLevel f model =
   { model
-  | level = f model.level
+  | currentRoom = f model.currentRoom
   }
 
 isAlivePlayer : Model -> Model
 isAlivePlayer model =
   { model
-  | playerAlive = List.all ((/=) model.level.playerCoord) model.level.creatures
+  | playerAlive = List.all ((/=) model.currentRoom.playerCoord) model.currentRoom.creatures
   }
 
 subscriptions : Model -> Sub Msg
@@ -253,16 +253,16 @@ view model =
           ( round <| f (toFloat dx) 1216
           , round <| f (toFloat dy) 1024
           )
-          model.level
+          model.currentRoom
         , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
         ]
       _ ->
-        [ drawRoom (0, 0) model.level
+        [ drawRoom (0, 0) model.currentRoom
         , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
         ]
 
 drawRoom : Point -> Room -> Html Msg
-drawRoom (dx, dy) level =
+drawRoom (dx, dy) room =
   svg
     [ width "1216"
     , height "1024"
@@ -280,20 +280,20 @@ drawRoom (dx, dy) level =
         ] []) ::
       List.concat (
         Array.toList
-        <| Array.map (tileTags (0, 0) level)
-        <| Array.indexedMap pair level.blueprint
+        <| Array.map (tileTags (0, 0) room)
+        <| Array.indexedMap pair room.blueprint
         )
       -- ++ activeEffects model
     )
 
 tileTags : Point -> Room -> (Coord, Tile) -> List (Html Msg)
-tileTags offset level (i, tag) =
-  tileBackground offset level i tag ++ tileObjects offset i level
+tileTags offset room (i, tag) =
+  tileBackground offset room i tag ++ tileObjects offset i room
 
 tileBackground : Point -> Room -> Coord -> Tile -> List (Html Msg)
-tileBackground offset level i tile =
+tileBackground offset room i tile =
   let
-    (px, py) = toCoords level.width i
+    (px, py) = toCoords room.width i
     displayPos = Utils.sub (px, py) offset
 
     background =
@@ -301,7 +301,7 @@ tileBackground offset level i tile =
 
     pos = case tile of
       Floor -> background
-      Wall -> Maybe.withDefault background (Array.get i level.wallTiles)
+      Wall -> Maybe.withDefault background (Array.get i room.wallTiles)
       Orb _ -> background
       Checkpoint -> background
       Door _ Closed -> background
@@ -344,17 +344,17 @@ tileBackground offset level i tile =
     (if pos == (-1, -1) then [] else [ imgTile displayPos pos tileSet ]) ++ tileItems
 
 tileObjects : Point -> Coord -> Room -> List (Html Msg)
-tileObjects offset i level =
-  let p = Utils.sub (toCoords level.width i) offset
+tileObjects offset i room =
+  let p = Utils.sub (toCoords room.width i) offset
   in
-  if List.member i level.creatures
+  if List.member i room.creatures
     then
       --[ imgTile p i (cycle (0, 8) [(1, 8), (2, 8)] animationTick) Atlas ]
       [ imgTile p (0, 8) Atlas ]
-    else if level.swordPos == i
+    else if room.swordPos == i
       then [ imgTile p (8, 15) Atlas ]
       else
-        if level.playerCoord == i
+        if room.playerCoord == i
         then [ imgTile p (6, 4) Atlas ]
         else []
 

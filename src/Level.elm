@@ -35,12 +35,12 @@ testLevel =
 
 enter : Level a -> RoomId -> Level a
 enter level id =
+  let
+    enterState room =
+      { room
+      | state = if room.state == Unseen then Seen else room.state
+      }
+  in
   { level
   | rooms = Dict.update id (Maybe.andThen (Just << enterState)) level.rooms
-  }
-
-enterState : Room a -> Room a
-enterState room =
-  { room
-  | state = if room.state == Unseen then Seen else room.state
   }
