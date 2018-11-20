@@ -39,7 +39,6 @@ type alias Model =
   , checkpoints : List Room
   , justLoaded : Bool
   , effect : Maybe Effect
-  , levelsRepository : Dict.Dict (Int, Int) (Point -> Dir -> Room)
   , level : Level.Level (Point -> Dir -> Room)
   }
 
@@ -61,7 +60,6 @@ init () =
     , checkpoints = [currentRoom]
     , justLoaded = False
     , effect = Nothing
-    , levelsRepository = Dict.fromList [((0, 0), level1), ((0, 1), level2), ((0, 2), level3), ((1, 1), level4)]
     , level = Level.testLevel
     }
   , Cmd.none
@@ -161,16 +159,15 @@ withMAction action model =
   case action model.currentRoom of
     Move room -> withAction (const room) model
     Leave delta newPlayerPos ->
-      case Dict.get (add model.currentRoom.pos delta) model.levelsRepository of
-        Just room ->
-          let nextLevel = room newPlayerPos model.currentRoom.playerDir
+      let newRoomId = add model.level.currentRoomId delta in
+      case Dict.get newRoomId model.level.rooms of
+        Just { builder } ->
+          let nextLevel = builder newPlayerPos model.currentRoom.playerDir
           in
           { model
-          | effect = Just <| ChangeRoom
-              nextLevel
-              0
-              delta
+          | effect = Just <| ChangeRoom nextLevel 0 delta
           , currentRoom = concatLevels model.currentRoom nextLevel delta
+          , level = Level.move (List.isEmpty model.currentRoom.creatures) newRoomId model.level
           }
         Nothing -> withAction (const model.currentRoom) model
 
@@ -265,12 +262,13 @@ view model =
 drawMinimap : Level.Level a -> Html Msg
 drawMinimap level =
   svg
-    [ width "100"
-    , height "100"
+    [ height "120"
+    , width "120"
     , viewBox "0 0 120 120"
     ]
     <| (rect [ x "0" , y "0" , width "120" , height "120" , fill "rgb(75, 73, 75)" ] [])
-        :: (Dict.values <| Dict.map (drawMinimapRoom level.currentRoom) level.rooms)
+        :: (Dict.values <| Dict.map (drawMinimapRoom level.currentRoomId) level.rooms)
+        ++ [rect [ x "45", y "45", width "30", height "30", stroke "gold", strokeWidth "3", fill "none" ] []]
         ++ [rect [ x "0", y "0", width "120", height "120", stroke "gold", strokeWidth "5", fill "none" ] []]
 
 drawMinimapRoom : Room.RoomId -> Room.RoomId -> Level.Room a -> Html Msg
@@ -284,8 +282,6 @@ drawMinimapRoom (ox, oy) (dx, dy) room =
       Level.Unseen -> "none"
       Level.Complete -> "white"
       Level.Seen -> "red"
-    , stroke <| if ox == dx && oy == dy then "gold" else "none"
-    , strokeWidth "3"
     ] []
 
 drawRoom : Point -> Room -> Html Msg

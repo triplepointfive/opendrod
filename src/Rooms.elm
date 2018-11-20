@@ -55,7 +55,6 @@ level1 (px, py) dir =
   , creatures = []
   , width = 38
   , height = 32
-  , pos = (0, 0)
 
   , swordPos = dirCoord 38 (px + py * 38) dir
   , playerCoord = (px + py * 38)
@@ -106,7 +105,6 @@ level2 (px, py) dir =
   , creatures = [737]
   , width = 38
   , height = 32
-  , pos = (0, 1)
 
   , swordPos = dirCoord 38 (px + py * 38) dir
   , playerCoord = (px + py * 38)
@@ -165,7 +163,6 @@ level3 (px, py) dir =
   , creatures = [559]
   , width = 38
   , height = 32
-  , pos = (0, 2)
 
   , swordPos = dirCoord 38 (px + py * 38) dir
   , playerCoord = (px + py * 38)
@@ -216,7 +213,6 @@ level4 (px, py) dir =
   , creatures = []
   , width = 38
   , height = 32
-  , pos = (1, 1)
 
   , swordPos = dirCoord 38 (px + py * 38) dir
   , playerCoord = (px + py * 38)

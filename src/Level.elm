@@ -16,14 +16,14 @@ type alias Room a =
   }
 
 type alias Level a =
-  { currentRoom : RoomId
+  { currentRoomId : RoomId
   , complete : Bool
   , rooms : Dict.Dict RoomId (Room a)
   }
 
 testLevel : Level (Point -> Dir -> Room.Room)
 testLevel =
-  { currentRoom = (0, 1)
+  { currentRoomId = (0, 1)
   , complete = False
   , rooms = Dict.fromList
     [ ((0, 0), { state = Seen, secret = False, builder = level1 })
@@ -34,8 +34,8 @@ testLevel =
   }
 
 -- TODO: set room complete state if it does not include enemies
-enter : Level a -> RoomId -> Level a
-enter level id =
+enter : RoomId -> Level a -> Level a
+enter id level =
   let
     enterState room =
       { room
@@ -44,4 +44,21 @@ enter level id =
   in
   { level
   | rooms = Dict.update id (Maybe.andThen (Just << enterState)) level.rooms
+  , currentRoomId = id
   }
+
+leave : Bool -> Level a -> Level a
+leave cleared level =
+  let
+    leaveState room =
+      { room
+      | state = if cleared then Complete else room.state
+      }
+  in
+  { level
+  | rooms = Dict.update level.currentRoomId (Maybe.andThen (Just << leaveState)) level.rooms
+  }
+
+move : Bool -> RoomId -> Level a -> Level a
+move cleared to level =
+  leave cleared level |> enter to

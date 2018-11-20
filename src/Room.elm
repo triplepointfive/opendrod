@@ -37,7 +37,6 @@ type alias Room =
   , playerDir : Dir
   , width : Int
   , height : Int
-  , pos : Point
   , wallTiles : Array.Array (Int, Int)
   }
 
