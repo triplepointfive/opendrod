@@ -40,6 +40,7 @@ type alias Model =
   , justLoaded : Bool
   , effect : Maybe Effect
   , levelsRepository : Dict.Dict (Int, Int) (Point -> Dir -> Room)
+  , level : Level.Level (Point -> Dir -> Room)
   }
 
 type Effect = TileClicked Tile | ChangeRoom Room Float Point
@@ -61,6 +62,7 @@ init () =
     , justLoaded = False
     , effect = Nothing
     , levelsRepository = Dict.fromList [((0, 0), level1), ((0, 1), level2), ((0, 2), level3), ((1, 1), level4)]
+    , level = Level.testLevel
     }
   , Cmd.none
   )
@@ -245,21 +247,46 @@ keyDecoder =
 view : Model -> Html Msg
 view model =
   div []
-    <| case model.effect of
+    [ case model.effect of
       Just (ChangeRoom _ c (dx, dy)) ->
         let f s max = max * s * sin( c * pi / 2 + pi / 4 * (s - 1)) in
         -- let f s max = max * s * (0.5 * (s - 1) + c) in
-        [ drawRoom
+        drawRoom
           ( round <| f (toFloat dx) 1216
           , round <| f (toFloat dy) 1024
           )
           model.currentRoom
-        , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
-        ]
       _ ->
-        [ drawRoom (0, 0) model.currentRoom
-        , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
-        ]
+        drawRoom (0, 0) model.currentRoom
+    , drawMinimap model.level
+    , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
+    ]
+
+drawMinimap : Level.Level a -> Html Msg
+drawMinimap level =
+  svg
+    [ width "100"
+    , height "100"
+    , viewBox "0 0 120 120"
+    ]
+    <| (rect [ x "0" , y "0" , width "120" , height "120" , fill "rgb(75, 73, 75)" ] [])
+        :: (Dict.values <| Dict.map (drawMinimapRoom level.currentRoom) level.rooms)
+        ++ [rect [ x "0", y "0", width "120", height "120", stroke "gold", strokeWidth "5", fill "none" ] []]
+
+drawMinimapRoom : Room.RoomId -> Room.RoomId -> Level.Room a -> Html Msg
+drawMinimapRoom (ox, oy) (dx, dy) room =
+  rect
+    [ x <| String.fromInt <| 45 + 30 * (dx - ox)
+    , y <| String.fromInt <| 45 + 30 * (dy - oy)
+    , width "30"
+    , height "30"
+    , fill <| case room.state of
+      Level.Unseen -> "none"
+      Level.Complete -> "white"
+      Level.Seen -> "red"
+    , stroke <| if ox == dx && oy == dy then "gold" else "none"
+    , strokeWidth "3"
+    ] []
 
 drawRoom : Point -> Room -> Html Msg
 drawRoom (dx, dy) room =
@@ -267,9 +294,7 @@ drawRoom (dx, dy) room =
     [ width "1216"
     , height "1024"
     , viewBox <| String.fromInt dx ++ " " ++ String.fromInt dy ++ " 1216 1024"
-    , Html.Attributes.style "display" "block"
     ]
-
     (
       (rect
         [ x "0"

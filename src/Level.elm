@@ -23,16 +23,17 @@ type alias Level a =
 
 testLevel : Level (Point -> Dir -> Room.Room)
 testLevel =
-  { currentRoom = (0, 0)
+  { currentRoom = (0, 1)
   , complete = False
   , rooms = Dict.fromList
-    [ ((0, 0), { state = Unseen, secret = False, builder = level1 })
-    , ((0, 1), { state = Unseen, secret = False, builder = level2 })
-    , ((0, 2), { state = Unseen, secret = False, builder = level3 })
+    [ ((0, 0), { state = Seen, secret = False, builder = level1 })
+    , ((0, 1), { state = Complete, secret = False, builder = level2 })
+    , ((0, 2), { state = Seen, secret = False, builder = level3 })
     , ((1, 1), { state = Unseen, secret = False, builder = level4 })
     ]
   }
 
+-- TODO: set room complete state if it does not include enemies
 enter : Level a -> RoomId -> Level a
 enter level id =
   let
