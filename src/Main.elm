@@ -14,9 +14,10 @@ import Time
 
 import AI exposing (..)
 import Room exposing (..)
-import Rooms exposing (..)
 import Level
 import Utils exposing (..)
+
+import Levels.Level1
 
 main = Browser.element
   { init = init
@@ -39,7 +40,7 @@ type alias Model =
   , checkpoints : List Room
   , justLoaded : Bool
   , effect : Maybe Effect
-  , level : Level.Level (Point -> Dir -> Room)
+  , level : Level.Level
   }
 
 type Effect = TileClicked Tile | ChangeRoom Room Float Point
@@ -51,19 +52,19 @@ type Msg = KeyPress String | Tick | Click Tile | AnimationRate Float
 init : () -> ( Model, Cmd.Cmd Msg )
 init () =
   let
-    currentRoom = level2 (15, 18) SE -- (36, 27) E -- (6, 14) S -- (15, 0)
+    currentRoom = Levels.Level1.level.init
   in
-  ( { currentRoom = currentRoom
-    , playerAlive = True
-    , animationTick = 0
-    , backsteps = []
-    , checkpoints = [currentRoom]
-    , justLoaded = False
-    , effect = Nothing
-    , level = Level.testLevel
-    }
-  , Cmd.none
-  )
+    ( { currentRoom = currentRoom
+      , playerAlive = True
+      , animationTick = 0
+      , backsteps = []
+      , checkpoints = [currentRoom]
+      , justLoaded = False
+      , effect = Nothing
+      , level = Levels.Level1.level
+      }
+    , Cmd.none
+    )
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -161,8 +162,14 @@ withMAction action model =
     Leave delta newPlayerPos ->
       let newRoomId = add model.level.currentRoomId delta in
       case Dict.get newRoomId model.level.rooms of
-        Just { builder } ->
-          let nextLevel = builder newPlayerPos model.currentRoom.playerDir
+        Just { builder, state } ->
+          let
+            nextLevel =
+              Level.buildRoom
+                (state == Level.Complete)
+                newPlayerPos
+                model.currentRoom.playerDir
+                builder
           in
           { model
           | effect = Just <| ChangeRoom nextLevel 0 delta
@@ -277,7 +284,7 @@ view model =
     , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
     ]
 
-drawMinimap : Level.Level a -> Html Msg
+drawMinimap : Level.Level -> Html Msg
 drawMinimap level =
   svg
     [ width "228"
@@ -289,7 +296,7 @@ drawMinimap level =
         ++ [rect [ x "57", y "48", width "38", height "32", stroke "gold", strokeWidth "3", fill "none" ] []]
         ++ [rect [ x "0", y "0", width "152", height "128", stroke "gold", strokeWidth "5", fill "none" ] []]
 
-drawMinimapRoom : Room.RoomId -> Room.RoomId -> Level.Room a -> List (Html Msg)
+drawMinimapRoom : Room.RoomId -> Room.RoomId -> Level.RoomRep -> List (Html Msg)
 drawMinimapRoom (ox, oy) (dx, dy) room =
   if room.state == Level.Unseen
     then []

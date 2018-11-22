@@ -1,6 +1,7 @@
 module Room exposing (..)
 
 import Array
+import Dict
 
 import Utils exposing (..)
 
@@ -10,7 +11,7 @@ type alias ObsticalId = Int
 
 type alias RoomId = Point
 
-type ObsticalState
+type DoorState
   = Closed
   | Open
 
@@ -24,8 +25,8 @@ type Tile
   | Floor
   | Orb (List (ObsticalId, OrbAction))
   | Checkpoint
-  | Door ObsticalId ObsticalState
-  | GreenDoor ObsticalState
+  | Door ObsticalId DoorState
+  | GreenDoor DoorState
   | Arrow Dir
 
 type alias Creature = Coord
