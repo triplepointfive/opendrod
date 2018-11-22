@@ -280,27 +280,56 @@ view model =
 drawMinimap : Level.Level a -> Html Msg
 drawMinimap level =
   svg
-    [ height "120"
-    , width "120"
-    , viewBox "0 0 120 120"
+    [ width "228"
+    , height "192"
+    , viewBox "0 0 152 128"
     ]
-    <| (rect [ x "0" , y "0" , width "120" , height "120" , fill "rgb(75, 73, 75)" ] [])
-        :: (Dict.values <| Dict.map (drawMinimapRoom level.currentRoomId) level.rooms)
-        ++ [rect [ x "45", y "45", width "30", height "30", stroke "gold", strokeWidth "3", fill "none" ] []]
-        ++ [rect [ x "0", y "0", width "120", height "120", stroke "gold", strokeWidth "5", fill "none" ] []]
+    <| (rect [ x "0" , y "0" , width "152" , height "128" , fill "rgb(75, 73, 75)" ] [])
+        :: (List.concat <| Dict.values <| Dict.map (drawMinimapRoom level.currentRoomId) level.rooms)
+        ++ [rect [ x "57", y "48", width "38", height "32", stroke "gold", strokeWidth "3", fill "none" ] []]
+        ++ [rect [ x "0", y "0", width "152", height "128", stroke "gold", strokeWidth "5", fill "none" ] []]
 
-drawMinimapRoom : Room.RoomId -> Room.RoomId -> Level.Room a -> Html Msg
+drawMinimapRoom : Room.RoomId -> Room.RoomId -> Level.Room a -> List (Html Msg)
 drawMinimapRoom (ox, oy) (dx, dy) room =
-  rect
-    [ x <| String.fromInt <| 45 + 30 * (dx - ox)
-    , y <| String.fromInt <| 45 + 30 * (dy - oy)
-    , width "30"
-    , height "30"
-    , fill <| case room.state of
-      Level.Unseen -> "none"
-      Level.Complete -> "white"
-      Level.Seen -> "red"
-    ] []
+  if room.state == Level.Unseen
+    then []
+    else
+      let
+        (baseX, baseY) =
+          ( (152 - 38) // 2 + 38 * (dx - ox)
+          , (128 - 32) // 2 + 32 * (dy - oy)
+          )
+      in
+      rect
+        [ x <| String.fromInt baseX
+        , y <| String.fromInt baseY
+        , width "38"
+        , height "32"
+        , fill <| case room.state of
+          Level.Unseen -> "none"
+          Level.Complete -> "white"
+          Level.Seen -> "red"
+        ] []
+        :: List.concat (List.indexedMap
+          (\i tile ->
+            let
+              (tdx, tdy) = toCoords 38 i
+            in
+            if tile
+              then [
+                rect
+                  [ x <| String.fromInt <| baseX + tdx
+                  , y <| String.fromInt <| baseY + tdy
+                  , width "1"
+                  , height "1"
+                  , fill "black"
+                  ]
+                  []
+                ]
+              else []
+          )
+          room.minimap
+          )
 
 drawRoom : Point -> Room -> Html Msg
 drawRoom (dx, dy) room =
