@@ -165,6 +165,7 @@ withMAction action model =
         Just { builder, state } ->
           let
             nextLevel =
+              postProcessRoom <|
               Level.buildRoom
                 (state == Level.Complete)
                 newPlayerPos
@@ -280,7 +281,7 @@ view model =
           model.currentRoom
       _ ->
         drawRoom (0, 0) model.currentRoom
-    , drawMinimap model.level
+    , lazy (drawMinimap) model.level
     , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
     ]
 
