@@ -25,6 +25,7 @@ type Tile
   | Orb (List (ObsticalId, OrbAction))
   | Checkpoint
   | Door ObsticalId ObsticalState
+  | GreenDoor ObsticalState
   | Arrow Dir
 
 type alias Creature = Coord
@@ -163,6 +164,8 @@ canPlayerMoveTo prevCoord level coord =
     Just Checkpoint -> True
     Just (Door _ Closed) -> False
     Just (Door _ Open) -> True
+    Just (GreenDoor Closed) -> False
+    Just (GreenDoor Open) -> True
     Just (Arrow d) -> not (oppositeDir d dir)
 
 buildSwordPos : Room -> Room

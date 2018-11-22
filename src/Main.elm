@@ -51,7 +51,7 @@ type Msg = KeyPress String | Tick | Click Tile | AnimationRate Float
 init : () -> ( Model, Cmd.Cmd Msg )
 init () =
   let
-    currentRoom = level2 (36, 27) E -- (6, 14) S -- (15, 0)
+    currentRoom = level2 (15, 18) SE -- (36, 27) E -- (6, 14) S -- (15, 0)
   in
   ( { currentRoom = currentRoom
     , playerAlive = True
@@ -189,7 +189,8 @@ withAction action model =
         }
 
       afterActionModel =
-        List.foldl
+        afterAIPostProcess
+        <| List.foldl
           (\creature md -> isAlivePlayer <| creatureTurn creature md)
           actualModel
           <| List.sortBy
@@ -201,6 +202,23 @@ withAction action model =
         else postProcessTile afterActionModel
   else
     model
+
+afterAIPostProcess : Model -> Model
+afterAIPostProcess model =
+  { model
+  | currentRoom = postProcessRoom model.currentRoom
+  }
+
+postProcessRoom : Room -> Room
+postProcessRoom room =
+  -- TODO: Cache green door open?
+  if List.isEmpty room.creatures
+    then
+      { room
+      | blueprint = Array.map (\tile -> if tile == GreenDoor Closed then GreenDoor Open else tile) room.blueprint
+      }
+    else
+      room
 
 postProcessTile : Model -> Model
 postProcessTile model =
@@ -328,6 +346,7 @@ tileBackground offset room i tile =
       Door _ Closed -> background
       Door _ Open -> background
       Arrow _ -> background
+      GreenDoor _ -> background -- TODO: Draw door here
 
     tileSet = case tile of
       Wall -> Constructions
@@ -336,6 +355,8 @@ tileBackground offset room i tile =
     tileItems = case tile of
       Floor -> []
       Wall -> []
+      GreenDoor Open -> []
+      GreenDoor Closed -> [ imgTile displayPos (12, 8) Constructions ]
       Orb _ ->
         [ imgTile displayPos (4, 0) BaseMeph ]
       Checkpoint ->
