@@ -69,14 +69,14 @@ init () =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
-    Tick -> ( tick model , Cmd.none )
+    Tick -> ( tick model, Cmd.none )
     AnimationRate delta -> ( tickEffect delta model, Cmd.none )
 
-    KeyPress "Backspace" -> ( undo model , Cmd.none )
-    KeyPress "r" -> ( loadCheckpoint model , Cmd.none )
+    KeyPress "Backspace" -> ( undo model, Cmd.none )
+    KeyPress "r" -> ( loadCheckpoint model, Cmd.none )
 
-    KeyPress "q" -> ( withAction (turn dirLeft) model , Cmd.none )
-    KeyPress "w" -> ( withAction (turn dirRight) model , Cmd.none )
+    KeyPress "q" -> ( withAction (turn dirLeft) model, Cmd.none )
+    KeyPress "w" -> ( withAction (turn dirRight) model, Cmd.none )
 
     KeyPress "j" -> ( withMAction (playerMoveDir S) model, Cmd.none )
     KeyPress "k" -> ( withMAction (playerMoveDir N) model, Cmd.none )
@@ -84,9 +84,9 @@ update msg model =
     KeyPress "h" -> ( withMAction (playerMoveDir W) model, Cmd.none )
 
     KeyPress "y" -> ( withMAction (playerMoveDir NW) model, Cmd.none )
-    KeyPress "u" -> ( withMAction (playerMoveDir NE) model , Cmd.none )
+    KeyPress "u" -> ( withMAction (playerMoveDir NE) model, Cmd.none )
     KeyPress "b" -> ( withMAction (playerMoveDir SW) model, Cmd.none )
-    KeyPress "n" -> ( withMAction (playerMoveDir SE) model , Cmd.none )
+    KeyPress "n" -> ( withMAction (playerMoveDir SE) model, Cmd.none )
 
     KeyPress _ -> ( model, Cmd.none )
 
