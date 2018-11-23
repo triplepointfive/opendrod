@@ -43,6 +43,15 @@ type alias Room =
 
 type MoveResult = Move Room | Leave Point Point
 
+movePlayer : Dir.Dir -> Room -> Room
+movePlayer dir room = buildSwordPos { room | playerCoord = Dir.moveCoord room.width room.playerCoord dir }
+
+turnSword : (Dir.Dir -> Dir.Dir) -> Room -> Room
+turnSword f room = buildSwordPos { room | playerDir = f room.playerDir }
+
+buildSwordPos : Room -> Room
+buildSwordPos room = { room | swordPos = Dir.moveCoord room.width room.playerCoord room.playerDir }
+
 canRPlayerMoveTo : Coord -> Room -> Coord -> Bool
 canRPlayerMoveTo prevCoord level coord =
   let

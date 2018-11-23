@@ -160,38 +160,6 @@ addClickTileEffect tile model =
     Orb _ -> { model | effect = Just (TileClicked tile)}
     _ -> { model | effect = Nothing }
 
-withAction : (Room -> Room) -> Model -> Model
-withAction action model = model
-  -- if model.playerAlive then
-  --   let
-  --     actualModel =
-  --       onRoom checkSword
-  --       <| isAlivePlayer
-  --       <| onRoom (buildSwordPos << action)
-  --       { model
-  --       | backsteps = [model.currentRoom]
-  --       , checkpoints =
-  --         if model.justLoaded
-  --           then model.currentRoom :: model.checkpoints
-  --           else model.checkpoints
-  --       , justLoaded = False
-  --       }
-
-  --     afterActionModel =
-  --       afterAIPostProcess
-  --       <| List.foldl
-  --         (\creature md -> isAlivePlayer <| creatureTurn creature md)
-  --         actualModel
-  --         <| List.sortBy
-  --             (squareDistanceToPlayer actualModel.currentRoom)
-  --             actualModel.currentRoom.creatures
-  --   in
-  --     if afterActionModel.currentRoom.playerCoord == model.currentRoom.playerCoord
-  --       then afterActionModel
-  --       else postProcessTile afterActionModel
-  -- else
-  --   model
-
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch <| case model.effect of

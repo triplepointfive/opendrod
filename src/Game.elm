@@ -31,15 +31,11 @@ onRoom f model = { model | room = f model.room }
 --
 --     _ -> model
 
--- TODO: updateGame <<  add checkpoint if movement succeed
--- checkRoomStatus : Game -> Game
--- checkRoomStatus =
-
 turn : (Dir.Dir -> Dir.Dir) -> Game -> Game
-turn f = afterPlayer << onRoom (turnSword f)
+turn f = afterPlayer << onRoom (Room.turnSword f)
 
 afterPlayer : Game -> Game
-afterPlayer = ifAlive (updateRoom) << ifAlive (aiTurn << triggerSword) << onRoom (buildSwordPos)
+afterPlayer = ifAlive (updateRoom) << ifAlive (aiTurn << triggerSword)
 
 chain : (a -> Maybe a) -> a -> a -> a
 chain f i a = Maybe.withDefault a (f i)
@@ -51,16 +47,12 @@ leave : Dir.Dir -> Game -> Maybe Game
 leave dir = const Nothing
 
 movePlayer : Dir.Dir -> Game -> Maybe Game
-movePlayer dir = canDo (moveTo dir) (onRoom (moveRPlayer dir))
+movePlayer dir = canDo (moveTo dir) (onRoom (Room.movePlayer dir))
 
 -- TODO : Simplify
 moveTo : Dir.Dir -> Game -> Bool
 moveTo dir { room } =
   canRPlayerMoveTo room.playerCoord room (Dir.moveCoord room.width room.playerCoord dir)
-
--- TODO : Extract to Room & rename
-moveRPlayer : Dir.Dir -> Room -> Room
-moveRPlayer dir room = { room | playerCoord = Dir.moveCoord room.width room.playerCoord dir }
 
 failMove : Game -> Game
 failMove = afterPlayer
@@ -113,16 +105,6 @@ roomDelta (x, y) { width } = if x < 0 then (-1, 0) else if y < 0 then (0, -1) el
 destPos : Dir.Dir -> Room -> Point
 destPos dir { width, playerCoord } = add (Dir.delta dir) (toCoords width playerCoord)
 
--- afterMove : Dir.Dir -> (Game -> Game) -> (Game -> Game) -> Game -> Game
--- afterMove dir success fail game =
---   if canPlayerMoveTo game.room.playerCoord game.room
---     then success <| onRoom (buildSwordPos << movePlayer dir) game
---     else fail game
---
--- movePlayer : Dir.Dir -> Room -> Room
--- movePlayer dir room = { room | playerCoord = Dir.moveCoord room.width room.playerCoord dir }
--- TODO: Remove duplicity
-
 -- withMAction : (Room -> MoveResult) -> Model -> Model
 -- withMAction action model = model
   -- case action model.currentRoom of
@@ -169,16 +151,6 @@ destPos dir { width, playerCoord } = add (Dir.delta dir) (toCoords width playerC
 --           , modBy level.height (py + snd delta)
 --           )
 
-
-
-
-
-
-
-
-buildSwordPos : Room -> Room
-buildSwordPos room = { room | swordPos = Dir.moveCoord room.width room.playerCoord room.playerDir }
-
 swordToggle : Room -> Room
 swordToggle room =
   case Array.get room.swordPos room.blueprint of
@@ -197,12 +169,6 @@ orbAction actions tile =
             Toggle -> if state == Closed then Open else Closed
         _ -> tile
     _ -> tile
-
-turnSword : (Dir.Dir -> Dir.Dir) -> Room -> Room
-turnSword f room = { room | playerDir = f room.playerDir }
-
--- onMove : Game -> Game
--- onMove = ifAlive (updateRoom) << ifAlive (aiTurn << triggerSword) << updateAlive << move
 
 triggerSword : Game -> Game
 triggerSword = onRoom (swordToggle << swordKill)
@@ -230,3 +196,36 @@ creatureTurn creature = ifAlive (updateAlive << onRoom (AI.roach creature))
 
 updateAlive : Game -> Game
 updateAlive game = { game | alive = List.all ((/=) game.room.playerCoord) game.room.creatures }
+
+
+-- withAction : (Room -> Room) -> Model -> Model
+-- withAction action model = model
+  -- if model.playerAlive then
+  --   let
+  --     actualModel =
+  --       onRoom checkSword
+  --       <| isAlivePlayer
+  --       <| onRoom (buildSwordPos << action)
+  --       { model
+  --       | backsteps = [model.currentRoom]
+  --       , checkpoints =
+  --         if model.justLoaded
+  --           then model.currentRoom :: model.checkpoints
+  --           else model.checkpoints
+  --       , justLoaded = False
+  --       }
+
+  --     afterActionModel =
+  --       afterAIPostProcess
+  --       <| List.foldl
+  --         (\creature md -> isAlivePlayer <| creatureTurn creature md)
+  --         actualModel
+  --         <| List.sortBy
+  --             (squareDistanceToPlayer actualModel.currentRoom)
+  --             actualModel.currentRoom.creatures
+  --   in
+  --     if afterActionModel.currentRoom.playerCoord == model.currentRoom.playerCoord
+  --       then afterActionModel
+  --       else postProcessTile afterActionModel
+  -- else
+  --   model
