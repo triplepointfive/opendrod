@@ -5,8 +5,8 @@ import Utils exposing (..)
 
 import Debug
 
-roachAI : Creature -> Room -> Room
-roachAI coord level =
+roach : Creature -> Room -> Room
+roach coord level =
   if List.member coord level.creatures
     then
       let

@@ -41,11 +41,6 @@ type alias Room =
   , wallTiles : Array.Array (Int, Int)
   }
 
-
-turn : (Dir.Dir -> Dir.Dir) -> Room -> Room
-turn newDir level =
-  { level | playerDir = newDir level.playerDir }
-
 type MoveResult = Move Room | Leave Point Point
 
 canPlayerMoveTo : Coord -> Room -> Coord -> Bool
@@ -69,43 +64,6 @@ canPlayerMoveTo prevCoord level coord =
     Just (GreenDoor Closed) -> False
     Just (GreenDoor Open) -> True
     Just (Arrow d) -> not (Dir.isOpposite d dir)
-
-buildSwordPos : Room -> Room
-buildSwordPos level =
-  { level
-  | swordPos = Dir.moveCoord level.width level.playerCoord level.playerDir
-  }
-
-checkSword : Room -> Room
-checkSword = swordToggle << swordKill
-
-swordKill : Room -> Room
-swordKill level =
-  { level
-  | creatures = List.filter ((/=) level.swordPos) level.creatures
-  }
-
-swordToggle : Room -> Room
-swordToggle level =
-  case Array.get level.swordPos level.blueprint of
-    Just (Orb actions) ->
-      { level
-      | blueprint = Array.map (orbAction actions) level.blueprint
-      }
-    _ -> level
-
-orbAction : List (ObsticalId, OrbAction) -> Tile -> Tile
-orbAction actions tile =
-  case tile of
-    Door id state ->
-      case List.filter (\(i, _) -> i == id) actions of
-        (_, action) :: _ ->
-          Door id <| case action of
-            Close -> Closed
-            ToOpen -> Open
-            Toggle -> if state == Closed then Open else Closed
-        _ -> tile
-    _ -> tile
 
 concatLevels : Room -> Room -> Point -> Room
 concatLevels origin addend (dx, dy) =

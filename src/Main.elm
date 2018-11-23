@@ -35,14 +35,10 @@ tileD : String
 tileD = String.fromInt tileDim
 
 type alias Model =
-  { currentRoom : Room
-  , playerAlive : Bool
+  { game : Game
   , animationTick : Int
-  , backsteps : List Room
-  , checkpoints : List Room
   , justLoaded : Bool
   , effect : Maybe Effect
-  , level : Level.Level
   }
 
 type Effect = TileClicked Tile | ChangeRoom Room Float Point
@@ -51,22 +47,27 @@ type Image = Atlas | BaseMeph | Constructions | Lomem
 
 type Msg = KeyPress String | Tick | Click Tile | AnimationRate Float
 
-init : () -> ( Model, Cmd.Cmd Msg )
+init : () -> (Model, Cmd.Cmd Msg)
 init () =
   let
     currentRoom = Levels.Level1.level.init
   in
-    ( { currentRoom = currentRoom
-      , playerAlive = True
-      , animationTick = 0
-      , backsteps = []
-      , checkpoints = [currentRoom]
+    ( { game =
+        { room = currentRoom
+        , alive = True
+        , backsteps = []
+        , checkpoints = [currentRoom]
+        , level = Levels.Level1.level
+        }
       , justLoaded = False
       , effect = Nothing
-      , level = Levels.Level1.level
+      , animationTick = 0
       }
     , Cmd.none
     )
+
+onGame : (Game -> Game) -> Model -> Model
+onGame f model = { model | game = f model.game }
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -74,46 +75,50 @@ update msg model =
     Tick -> ( tick model, Cmd.none )
     AnimationRate delta -> ( tickEffect delta model, Cmd.none )
 
-    KeyPress "Backspace" -> ( undo model, Cmd.none )
+    -- KeyPress "Backspace" -> ( undo model, Cmd.none )
     KeyPress "r" -> ( loadCheckpoint model, Cmd.none )
 
-    KeyPress "q" -> ( withAction (turn Dir.left) model, Cmd.none )
-    KeyPress "w" -> ( withAction (turn Dir.right) model, Cmd.none )
+    KeyPress "q" -> ( onGame (Game.turn Dir.left) model, Cmd.none )
+    KeyPress "w" -> ( onGame (Game.turn Dir.right) model, Cmd.none )
 
-    KeyPress "j" -> ( withMAction (playerMoveDir S) model, Cmd.none )
-    KeyPress "k" -> ( withMAction (playerMoveDir N) model, Cmd.none )
-    KeyPress "l" -> ( withMAction (playerMoveDir E) model, Cmd.none )
-    KeyPress "h" -> ( withMAction (playerMoveDir W) model, Cmd.none )
+    KeyPress "j" -> ( onGame (Game.move S) model, Cmd.none )
+    KeyPress "k" -> ( onGame (Game.move N) model, Cmd.none )
+    KeyPress "l" -> ( onGame (Game.move E) model, Cmd.none )
+    KeyPress "h" -> ( onGame (Game.move W) model, Cmd.none )
 
-    KeyPress "y" -> ( withMAction (playerMoveDir NW) model, Cmd.none )
-    KeyPress "u" -> ( withMAction (playerMoveDir NE) model, Cmd.none )
-    KeyPress "b" -> ( withMAction (playerMoveDir SW) model, Cmd.none )
-    KeyPress "n" -> ( withMAction (playerMoveDir SE) model, Cmd.none )
+    KeyPress "y" -> ( onGame (Game.move NW) model, Cmd.none )
+    KeyPress "u" -> ( onGame (Game.move NE) model, Cmd.none )
+    KeyPress "b" -> ( onGame (Game.move SW) model, Cmd.none )
+    KeyPress "n" -> ( onGame (Game.move SE) model, Cmd.none )
 
     KeyPress _ -> ( model, Cmd.none )
 
     Click tile -> ( addClickTileEffect tile model, Cmd.none )
 
-undo : Model -> Model
-undo model =
-  case model.backsteps of
-    x :: xs ->
-      { model
-      | currentRoom = x
-      , backsteps = xs
-      , playerAlive = True -- TODO: Consider moving to currentRoom
-      }
-    _ -> model
+-- undo : Model -> Model
+-- undo model =
+--   case model.game.backsteps of
+--     x :: xs ->
+--       { model
+--       | currentRoom = x
+--       , backsteps = xs
+--       , playerAlive = True -- TODO: Consider moving to currentRoom
+--       }
+--     _ -> model
 
 loadCheckpoint : Model -> Model
 loadCheckpoint model =
-  case model.checkpoints of
+  case model.game.checkpoints of
     x :: xs ->
       { model
-      | currentRoom = x
-      , checkpoints = xs
+      | game =
+        { room = x
+        , alive = True
+        , backsteps = []
+        , checkpoints = xs
+        , level = model.game.level
+        }
       , justLoaded = True
-      , playerAlive = True
       }
 
     _ -> model
@@ -133,10 +138,14 @@ tickEffect tickDelta model =
         then
           { model
           | effect = Nothing
-          , currentRoom = room
-          , backsteps = []
-          , checkpoints = [room]
           , justLoaded = False
+          , game =
+            { room = room
+            , backsteps = []
+            , checkpoints = [room]
+            , alive = True
+            , level = model.game.level
+            }
           }
         else
           { model
@@ -151,101 +160,61 @@ addClickTileEffect tile model =
     Orb _ -> { model | effect = Just (TileClicked tile)}
     _ -> { model | effect = Nothing }
 
-creatureTurn : Creature -> Model -> Model
-creatureTurn creature model =
-  if model.playerAlive
-    then onLevel (roachAI creature) model
-    else model
-
 withMAction : (Room -> MoveResult) -> Model -> Model
-withMAction action model =
-  case action model.currentRoom of
-    Move room -> withAction (const room) model
-    Leave delta newPlayerPos ->
-      let newRoomId = add model.level.currentRoomId delta in
-      case Dict.get newRoomId model.level.rooms of
-        Just { builder, state } ->
-          let
-            nextLevel =
-              postProcessRoom <|
-              Level.buildRoom
-                (state == Level.Complete)
-                newPlayerPos
-                model.currentRoom.playerDir
-                builder
-          in
-          { model
-          | effect = Just <| ChangeRoom nextLevel 0 delta
-          , currentRoom = concatLevels model.currentRoom nextLevel delta
-          , level = Level.move (List.isEmpty model.currentRoom.creatures) newRoomId model.level
-          }
-        Nothing -> withAction (const model.currentRoom) model
+withMAction action model = model
+  -- case action model.currentRoom of
+  --   Move room -> withAction (const room) model
+  --   Leave delta newPlayerPos ->
+  --     let newRoomId = add model.level.currentRoomId delta in
+  --     case Dict.get newRoomId model.level.rooms of
+  --       Just { builder, state } ->
+  --         let
+  --           nextLevel =
+  --             postProcessRoom <|
+  --             Level.buildRoom
+  --               (state == Level.Complete)
+  --               newPlayerPos
+  --               model.currentRoom.playerDir
+  --               builder
+  --         in
+  --         { model
+  --         | effect = Just <| ChangeRoom nextLevel 0 delta
+  --         , currentRoom = concatLevels model.currentRoom nextLevel delta
+  --         , level = Level.move (List.isEmpty model.currentRoom.creatures) newRoomId model.level
+  --         }
+  --       Nothing -> withAction (const model.currentRoom) model
 
 withAction : (Room -> Room) -> Model -> Model
-withAction action model =
-  if model.playerAlive then
-    let
-      actualModel =
-        onLevel checkSword
-        <| isAlivePlayer
-        <| onLevel (buildSwordPos << action)
-        { model
-        | backsteps = [model.currentRoom]
-        , checkpoints =
-          if model.justLoaded
-            then model.currentRoom :: model.checkpoints
-            else model.checkpoints
-        , justLoaded = False
-        }
+withAction action model = model
+  -- if model.playerAlive then
+  --   let
+  --     actualModel =
+  --       onRoom checkSword
+  --       <| isAlivePlayer
+  --       <| onRoom (buildSwordPos << action)
+  --       { model
+  --       | backsteps = [model.currentRoom]
+  --       , checkpoints =
+  --         if model.justLoaded
+  --           then model.currentRoom :: model.checkpoints
+  --           else model.checkpoints
+  --       , justLoaded = False
+  --       }
 
-      afterActionModel =
-        afterAIPostProcess
-        <| List.foldl
-          (\creature md -> isAlivePlayer <| creatureTurn creature md)
-          actualModel
-          <| List.sortBy
-              (squareDistanceToPlayer actualModel.currentRoom)
-              actualModel.currentRoom.creatures
-    in
-      if afterActionModel.currentRoom.playerCoord == model.currentRoom.playerCoord
-        then afterActionModel
-        else postProcessTile afterActionModel
-  else
-    model
-
-afterAIPostProcess : Model -> Model
-afterAIPostProcess model = onLevel postProcessRoom model
-
-mapRoomTiles : (Tile -> Tile) -> Room -> Room
-mapRoomTiles f room = { room | blueprint = Array.map f room.blueprint }
-
-postProcessRoom : Room -> Room
-postProcessRoom room =
-  -- TODO: Cache green door open?
-  if List.isEmpty room.creatures
-    then
-      mapRoomTiles (\tile -> if tile == GreenDoor Closed then GreenDoor Open else tile) room
-    else
-      room
-
-postProcessTile : Model -> Model
-postProcessTile model =
-  case Array.get model.currentRoom.playerCoord model.currentRoom.blueprint of
-    Just Checkpoint ->
-      { model
-      | checkpoints = model.currentRoom :: model.checkpoints
-      }
-
-    _ -> model
-
-onLevel : (Room -> Room) -> Model -> Model
-onLevel f model = { model | currentRoom = f model.currentRoom }
-
-isAlivePlayer : Model -> Model
-isAlivePlayer model =
-  { model
-  | playerAlive = List.all ((/=) model.currentRoom.playerCoord) model.currentRoom.creatures
-  }
+  --     afterActionModel =
+  --       afterAIPostProcess
+  --       <| List.foldl
+  --         (\creature md -> isAlivePlayer <| creatureTurn creature md)
+  --         actualModel
+  --         <| List.sortBy
+  --             (squareDistanceToPlayer actualModel.currentRoom)
+  --             actualModel.currentRoom.creatures
+  --   in
+  --     if afterActionModel.currentRoom.playerCoord == model.currentRoom.playerCoord
+  --       then afterActionModel
+  --       else postProcessTile afterActionModel
+  -- else
+  --   model
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -275,11 +244,11 @@ view model =
           ( round <| f (toFloat dx) 1216
           , round <| f (toFloat dy) 1024
           )
-          model.currentRoom
+          model.game.room
       _ ->
-        drawRoom (0, 0) model.currentRoom
-    , lazy (drawMinimap) model.level
-    , div [] [Html.text <| if model.playerAlive then "" else "Died" ]
+        drawRoom (0, 0) model.game.room
+    , lazy (drawMinimap) model.game.level
+    , div [] [Html.text <| if model.game.alive then "" else "Died" ]
     ]
 
 drawMinimap : Level.Level -> Html Msg
