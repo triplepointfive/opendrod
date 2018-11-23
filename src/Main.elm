@@ -160,30 +160,6 @@ addClickTileEffect tile model =
     Orb _ -> { model | effect = Just (TileClicked tile)}
     _ -> { model | effect = Nothing }
 
-withMAction : (Room -> MoveResult) -> Model -> Model
-withMAction action model = model
-  -- case action model.currentRoom of
-  --   Move room -> withAction (const room) model
-  --   Leave delta newPlayerPos ->
-  --     let newRoomId = add model.level.currentRoomId delta in
-  --     case Dict.get newRoomId model.level.rooms of
-  --       Just { builder, state } ->
-  --         let
-  --           nextLevel =
-  --             postProcessRoom <|
-  --             Level.buildRoom
-  --               (state == Level.Complete)
-  --               newPlayerPos
-  --               model.currentRoom.playerDir
-  --               builder
-  --         in
-  --         { model
-  --         | effect = Just <| ChangeRoom nextLevel 0 delta
-  --         , currentRoom = concatLevels model.currentRoom nextLevel delta
-  --         , level = Level.move (List.isEmpty model.currentRoom.creatures) newRoomId model.level
-  --         }
-  --       Nothing -> withAction (const model.currentRoom) model
-
 withAction : (Room -> Room) -> Model -> Model
 withAction action model = model
   -- if model.playerAlive then

@@ -43,8 +43,8 @@ type alias Room =
 
 type MoveResult = Move Room | Leave Point Point
 
-canPlayerMoveTo : Coord -> Room -> Coord -> Bool
-canPlayerMoveTo prevCoord level coord =
+canRPlayerMoveTo : Coord -> Room -> Coord -> Bool
+canRPlayerMoveTo prevCoord level coord =
   let
     isUntaken = List.isEmpty <| List.filter ((==) coord) level.creatures
     dir = Dir.fromDelta (sub (toCoords level.width coord) (toCoords level.width prevCoord))

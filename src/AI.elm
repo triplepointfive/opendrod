@@ -37,4 +37,4 @@ squareDistanceToPlayer level coords =
 
 canMoveTo : Coord -> Room -> Coord -> Bool
 canMoveTo prevCoord level coord =
-  canPlayerMoveTo prevCoord level coord && level.swordPos /= coord
+  canRPlayerMoveTo prevCoord level coord && level.swordPos /= coord

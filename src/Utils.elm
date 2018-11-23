@@ -42,3 +42,6 @@ sub (x, y) (dx, dy) = (x - dx, y - dy)
 
 pair : a -> b -> (a, b)
 pair a b = (a, b)
+
+canDo : (b -> Bool) -> (b -> a) -> b -> Maybe a
+canDo flag f v = if flag v then Just (f v) else Nothing

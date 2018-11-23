@@ -10,7 +10,7 @@ import Utils exposing (Point)
 
 level : Level.Level
 level =
-  { init = buildRoom True (14, 15) Dir.E roomm1m1
+  { init = buildRoom False (14, 15) Dir.E roomm1m1
   , currentRoomId = (-1, -1)
   , complete = False
   , rooms = Dict.fromList
@@ -79,7 +79,7 @@ roomm1m1 =
     , "####                                  "
     , "####                                  "
     , "####                                  "
-    , "####                                  "
+    , "####        RRRRRR                    "
     , "####                              ####"
     , "####                              ####"
     , "####                              ####"
@@ -96,7 +96,7 @@ roomm1m1 =
     , "######################################"
     ]
   , repository =
-    [
+    [ ('R', Creature)
     ]
   }
 
