@@ -13,6 +13,8 @@ import Svg.Attributes exposing (..)
 import Time
 
 import AI exposing (..)
+import Dir exposing (..)
+import Game exposing (..)
 import Room exposing (..)
 import Level
 import Utils exposing (..)
@@ -75,8 +77,8 @@ update msg model =
     KeyPress "Backspace" -> ( undo model, Cmd.none )
     KeyPress "r" -> ( loadCheckpoint model, Cmd.none )
 
-    KeyPress "q" -> ( withAction (turn dirLeft) model, Cmd.none )
-    KeyPress "w" -> ( withAction (turn dirRight) model, Cmd.none )
+    KeyPress "q" -> ( withAction (turn Dir.left) model, Cmd.none )
+    KeyPress "w" -> ( withAction (turn Dir.right) model, Cmd.none )
 
     KeyPress "j" -> ( withMAction (playerMoveDir S) model, Cmd.none )
     KeyPress "k" -> ( withMAction (playerMoveDir N) model, Cmd.none )
@@ -212,19 +214,17 @@ withAction action model =
     model
 
 afterAIPostProcess : Model -> Model
-afterAIPostProcess model =
-  { model
-  | currentRoom = postProcessRoom model.currentRoom
-  }
+afterAIPostProcess model = onLevel postProcessRoom model
+
+mapRoomTiles : (Tile -> Tile) -> Room -> Room
+mapRoomTiles f room = { room | blueprint = Array.map f room.blueprint }
 
 postProcessRoom : Room -> Room
 postProcessRoom room =
   -- TODO: Cache green door open?
   if List.isEmpty room.creatures
     then
-      { room
-      | blueprint = Array.map (\tile -> if tile == GreenDoor Closed then GreenDoor Open else tile) room.blueprint
-      }
+      mapRoomTiles (\tile -> if tile == GreenDoor Closed then GreenDoor Open else tile) room
     else
       room
 
@@ -239,10 +239,7 @@ postProcessTile model =
     _ -> model
 
 onLevel : (Room -> Room) -> Model -> Model
-onLevel f model =
-  { model
-  | currentRoom = f model.currentRoom
-  }
+onLevel f model = { model | currentRoom = f model.currentRoom }
 
 isAlivePlayer : Model -> Model
 isAlivePlayer model =

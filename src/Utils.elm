@@ -2,6 +2,8 @@ module Utils exposing (..)
 
 type alias Point = (Int, Int)
 
+type alias Coord = Int
+
 cycle : a -> List a -> Int -> a
 cycle x xs i =
   case List.drop (modBy (1 + List.length xs) i) xs of

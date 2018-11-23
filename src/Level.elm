@@ -4,6 +4,7 @@ import Array
 import Dict
 import Maybe
 
+import Dir
 import Room exposing (..)
 import Utils exposing (..)
 
@@ -111,13 +112,13 @@ buildWalls blueprint width =
     tileToWall coord tile =
       let
         w dir =
-          if modBy width coord == 0 && List.member dir [W, NW, SW] then True
-          else if modBy width coord == width - 1 && List.member dir [E, NE, SE] then True
-          else Maybe.withDefault Wall (Array.get (dirCoord width coord dir) blueprint) == Wall
+          if modBy width coord == 0 && List.member dir [Dir.W, Dir.NW, Dir.SW] then True
+          else if modBy width coord == width - 1 && List.member dir [Dir.E, Dir.NE, Dir.SE] then True
+          else Maybe.withDefault Wall (Array.get (Dir.moveCoord width coord dir) blueprint) == Wall
       in
       case tile of
         Wall ->
-          let walls = [w N, w NE, w E, w SE, w S, w SW, w W, w NW] in
+          let walls = [w Dir.N, w Dir.NE, w Dir.E, w Dir.SE, w Dir.S, w Dir.SW, w Dir.W, w Dir.NW] in
           case walls of
             -- Fully surrounded
             [True, True, True, True, True, True, True, True] -> (-1, -1)
@@ -162,20 +163,20 @@ buildWalls blueprint width =
             [False, _, False, _, True, _, True, _] -> (4, layer)
             [True, _, False, _, False, _, True, _] -> (5, layer)
 
-            _ -> if (List.length <| List.filter w [N, E, S, W]) == 1
+            _ -> if (List.length <| List.filter w [Dir.N, Dir.E, Dir.S, Dir.W]) == 1
               then (12, layer) else (3, 4)
         _ -> (0, 0)
   in
     Array.indexedMap tileToWall blueprint
 
-buildRoom : Bool -> Point -> Dir -> RoomBuilder -> Room.Room
+buildRoom : Bool -> Point -> Dir.Dir -> RoomBuilder -> Room.Room
 buildRoom completed (px, py) dir builder =
   let
     (blueprint, creatures) = buildBlueprint completed builder
   in
     { blueprint = blueprint
     , creatures = creatures
-    , swordPos = dirCoord 38 (px + py * 38) dir
+    , swordPos = Dir.moveCoord 38 (px + py * 38) dir
     , playerCoord = (px + py * 38)
     , playerDir = dir
     , width = 38

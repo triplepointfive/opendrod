@@ -3,15 +3,15 @@ module Levels.Level1 exposing (level)
 import Dict
 import Debug
 
-
-import Room exposing (..)
+import Dir
 import Level exposing (..)
+import Room exposing (..)
 import Utils exposing (Point)
 
 level : Level.Level
 level =
-  { init = buildRoom False (14, 15) E room01
-  , currentRoomId = (0, 1)
+  { init = buildRoom True (14, 15) Dir.E roomm1m1
+  , currentRoomId = (-1, -1)
   , complete = False
   , rooms = Dict.fromList
     [ ( (-1, -1)
@@ -268,14 +268,14 @@ room02 =
       ]
   , repository =
     [ ('R', Creature)
-    , ('Y', Tile <| Arrow NW)
-    , ('U', Tile <| Arrow NE)
-    , ('H', Tile <| Arrow W)
-    , ('L', Tile <| Arrow E)
-    , ('J', Tile <| Arrow S)
-    , ('K', Tile <| Arrow N)
-    , ('B', Tile <| Arrow SW)
-    , ('N', Tile <| Arrow SE)
+    , ('Y', Tile <| Arrow Dir.NW)
+    , ('U', Tile <| Arrow Dir.NE)
+    , ('H', Tile <| Arrow Dir.W)
+    , ('L', Tile <| Arrow Dir.E)
+    , ('J', Tile <| Arrow Dir.S)
+    , ('K', Tile <| Arrow Dir.N)
+    , ('B', Tile <| Arrow Dir.SW)
+    , ('N', Tile <| Arrow Dir.SE)
     , ('G', Tile <| GreenDoor Closed)
     ]
   }
