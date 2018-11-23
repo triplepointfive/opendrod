@@ -48,6 +48,19 @@ enter id level =
   , currentRoomId = id
   }
 
+completeRoom : RoomId -> Level -> Level
+completeRoom id level =
+  let
+    enterState room =
+      { room
+      | state = Complete
+      }
+  in
+  { level
+  | rooms = Dict.update id (Maybe.andThen (Just << enterState)) level.rooms
+  , currentRoomId = id
+  }
+
 leave : Bool -> Level -> Level
 leave cleared level =
   let
