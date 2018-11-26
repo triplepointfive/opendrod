@@ -115,9 +115,10 @@ leave : Dir.Dir -> Game -> Maybe Game
 leave dir game =
   let
     dest = destPos dir game.room
-    adj = add (roomDelta dest game.room) game.level.currentRoomId
+    x = roomDelta dest game.room
+    adj = add x game.level.currentRoomId
   in
-  Maybe.withDefault Nothing <| canDo (outOfRoom dest << .room) (goToRoom dest << updateLevels adj) game
+  Maybe.withDefault Nothing <| canDo (outOfRoom dest << .room) (goToRoom x << updateLevels adj) game
 
 updateLevels : Point -> Game -> Game
 updateLevels roomId game =
@@ -125,40 +126,67 @@ updateLevels roomId game =
   | level = Level.move (Room.isClear game.room) roomId game.level
   }
 
--- TODO: Rebuild checkpoints on room leave
 goToRoom : Point -> Game -> Maybe Game
 goToRoom pos game = Maybe.map (setRoom game) (Level.buildCurrentRoom (Room.shiftPos pos game.room) game.room.playerDir game.level)
 
 setRoom : Game -> Room -> Game
 setRoom game room = { game | room = room, checkpoints = [room], backsteps = [] }
 
-
-
-
-
 -- withMAction : (Room -> MoveResult) -> Model -> Model
 -- withMAction action model = model
-  -- case action model.currentRoom of
-  --   Move room -> withAction (const room) model
-  --   Leave delta newPlayerPos ->
-  --     let newRoomId = add model.level.currentRoomId delta in
-  --     case Dict.get newRoomId model.level.rooms of
-  --       Just { builder, state } ->
-  --         let
-  --           nextLevel =
-  --             postProcessRoom <|
-  --             Level.buildRoom
-  --               (state == Level.Complete)
-  --               newPlayerPos
-  --               model.currentRoom.playerDir
-  --               builder
-  --         in
-  --         { model
-  --         | effect = Just <| ChangeRoom nextLevel 0 delta
-  --         , currentRoom = concatLevels model.currentRoom nextLevel delta
-  --         , level = Level.move (List.isEmpty model.currentRoom.creatures) newRoomId model.level
-  --         }
-  --       Nothing -> withAction (const model.currentRoom) model
+--   case action model.currentRoom of
+--     Move room -> withAction (const room) model
+--     Leave delta newPlayerPos ->
+--       let newRoomId = add model.level.currentRoomId delta in
+--       case Dict.get newRoomId model.level.rooms of
+--         Just { builder, state } ->
+--           let
+--             nextLevel =
+--               postProcessRoom <|
+--               Level.buildRoom
+--                 (state == Level.Complete)
+--                 newPlayerPos
+--                 model.currentRoom.playerDir
+--                 builder
+--           in
+--           { model
+--           | effect = Just <| ChangeRoom nextLevel 0 delta
+--           , currentRoom = concatLevels model.currentRoom nextLevel delta
+--           , level = Level.move (List.isEmpty model.currentRoom.creatures) newRoomId model.level
+--           }
+--         Nothing -> withAction (const model.currentRoom) model
+
+-- withAction : (Room -> Room) -> Model -> Model
+-- withAction action model = model
+  -- if model.playerAlive then
+  --   let
+  --     actualModel =
+  --       onRoom checkSword
+  --       <| isAlivePlayer
+  --       <| onRoom (buildSwordPos << action)
+  --       { model
+  --       | backsteps = [model.currentRoom]
+  --       , checkpoints =
+  --         if model.justLoaded
+  --           then model.currentRoom :: model.checkpoints
+  --           else model.checkpoints
+  --       , justLoaded = False
+  --       }
+
+  --     afterActionModel =
+  --       afterAIPostProcess
+  --       <| List.foldl
+  --         (\creature md -> isAlivePlayer <| creatureTurn creature md)
+  --         actualModel
+  --         <| List.sortBy
+  --             (squareDistanceToPlayer actualModel.currentRoom)
+  --             actualModel.currentRoom.creatures
+  --   in
+  --     if afterActionModel.currentRoom.playerCoord == model.currentRoom.playerCoord
+  --       then afterActionModel
+  --       else postProcessTile afterActionModel
+  -- else
+  --   model
 
 
 -- playerMoveDir : Dir.Dir -> Room -> MoveResult
@@ -227,36 +255,3 @@ creatureTurn creature = ifAlive (updateAlive << onRoom (AI.roach creature))
 
 updateAlive : Game -> Game
 updateAlive game = { game | alive = List.all ((/=) game.room.playerCoord) game.room.creatures }
-
-
--- withAction : (Room -> Room) -> Model -> Model
--- withAction action model = model
-  -- if model.playerAlive then
-  --   let
-  --     actualModel =
-  --       onRoom checkSword
-  --       <| isAlivePlayer
-  --       <| onRoom (buildSwordPos << action)
-  --       { model
-  --       | backsteps = [model.currentRoom]
-  --       , checkpoints =
-  --         if model.justLoaded
-  --           then model.currentRoom :: model.checkpoints
-  --           else model.checkpoints
-  --       , justLoaded = False
-  --       }
-
-  --     afterActionModel =
-  --       afterAIPostProcess
-  --       <| List.foldl
-  --         (\creature md -> isAlivePlayer <| creatureTurn creature md)
-  --         actualModel
-  --         <| List.sortBy
-  --             (squareDistanceToPlayer actualModel.currentRoom)
-  --             actualModel.currentRoom.creatures
-  --   in
-  --     if afterActionModel.currentRoom.playerCoord == model.currentRoom.playerCoord
-  --       then afterActionModel
-  --       else postProcessTile afterActionModel
-  -- else
-  --   model

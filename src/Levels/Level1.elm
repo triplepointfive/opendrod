@@ -11,7 +11,7 @@ import Utils exposing (Point)
 level : Level.Level
 level =
   -- { init = buildRoom False (14, 15) Dir.E roomm1m1
-  { init = buildRoom False (31, 15) Dir.E roomm1m1
+  { init = buildRoom False (37, 14) Dir.E roomm1m1
   , currentRoomId = (-1, -1)
   , complete = False
   , rooms = Dict.fromList

@@ -56,7 +56,8 @@ isClear : Room -> Bool
 isClear = List.isEmpty << .creatures
 
 shiftPos : Point -> Room -> Point
-shiftPos (x, y) { width, height } = (modBy width x , modBy height y)
+shiftPos (x, y) { width, height, playerCoord } =
+  let (px, py) = toCoords width playerCoord in (modBy width <| x + px, modBy height <| y + py)
 
 canRPlayerMoveTo : Coord -> Room -> Coord -> Bool
 canRPlayerMoveTo prevCoord level coord =
