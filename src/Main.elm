@@ -75,7 +75,7 @@ update msg model =
     Tick -> ( tick model, Cmd.none )
     AnimationRate delta -> ( tickEffect delta model, Cmd.none )
 
-    KeyPress "Backspace" -> ( undo model, Cmd.none )
+    KeyPress "Backspace" -> ( onGame Game.undo model, Cmd.none )
     KeyPress "r" -> ( onGame Game.loadCheckpoint model, Cmd.none )
 
     KeyPress "q" -> ( onGame (Game.turn Dir.left) model, Cmd.none )
@@ -94,9 +94,6 @@ update msg model =
     KeyPress _ -> ( model, Cmd.none )
 
     Click tile -> ( addClickTileEffect tile model, Cmd.none )
-
-undo : Model -> Model
-undo model = { model | game = Game.undo model.game }
 
 tick : Model -> Model
 tick model =
@@ -167,7 +164,49 @@ view model =
       _ ->
         drawRoom (0, 0) model.game.room
     , lazy (drawMinimap) model.game.level
+    , lazy drawClock model.game.room.turn
     , div [] [Html.text <| if model.game.alive then "" else "Died" ]
+    ]
+
+-- TODO: Move lazy inside
+drawClock : Int -> Html Msg
+drawClock t =
+  let
+    segm s =
+      line
+        [ x1 <| String.fromInt <| round <| 50 + 45 * sin (s * pi / 15)
+        , y1 <| String.fromInt <| round <| 50 + -45 * cos (s * pi / 15)
+        , x2 <| String.fromInt <| round <| 50 + 49 * sin (s * pi / 15)
+        , y2 <| String.fromInt <| round <| 50 + -49 * cos (s * pi / 15)
+        , stroke "grey"
+        , strokeWidth <| if modBy 5 (round s) == 0 then "3" else "1"
+        ]
+        []
+  in
+  svg
+    [ width "228"
+    , height "228"
+    , viewBox "0 0 100 100"
+    ]
+    <|
+    -- [ rect [ x "0", y "0", width "100", height "100", fill "grey" ] []
+    [ circle [ cx "50", cy "50", r "49", fill "white", stroke "black" ] []]
+    ++ List.map (segm << toFloat) (List.range 0 29) ++
+    [ Svg.text_ [ x "42", y "15"] [Html.text "30"]
+    , Svg.text_ [ x "80", y "35"] [Html.text "5"]
+    , Svg.text_ [ x "75", y "75"] [Html.text "10"]
+    , Svg.text_ [ x "42", y "95"] [Html.text "15"]
+    , Svg.text_ [ x "13", y "72"] [Html.text "20"]
+    , Svg.text_ [ x "13", y "37"] [Html.text "25"]
+    , line
+      [ x1 "50"
+      , y1 "50"
+      , x2 <| String.fromInt <| round <| 50 + 49 * sin (toFloat t * pi / 15)
+      , y2 <| String.fromInt <| round <| 50 + -49 * cos (toFloat t * pi / 15)
+      , stroke "red"
+      , strokeWidth "2"
+      ]
+      []
     ]
 
 drawMinimap : Level.Level -> Html Msg

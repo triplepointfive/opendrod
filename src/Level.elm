@@ -80,6 +80,7 @@ buildRoom completed pos dir builder =
     , playerDir = dir
     , width = 38
     , height = 32
+    , turn = 0
     , wallTiles = buildWalls blueprint 38
     }
 

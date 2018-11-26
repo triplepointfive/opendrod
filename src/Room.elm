@@ -36,12 +36,16 @@ type alias Room =
   , swordPos : Coord
   , playerCoord : Coord
   , playerDir : Dir.Dir
+  , turn : Int
   , width : Int
   , height : Int
   , wallTiles : Array.Array (Int, Int)
   }
 
 type MoveResult = Move Room | Leave Point Point
+
+turn : Room -> Room
+turn room = { room | turn = modBy 30 (room.turn + 1) }
 
 movePlayer : Dir.Dir -> Room -> Room
 movePlayer dir room = buildSwordPos { room | playerCoord = Dir.moveCoord room.width room.playerCoord dir }

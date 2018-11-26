@@ -11,6 +11,7 @@ import Level
 import Room exposing (..)
 import Utils exposing (..)
 
+-- TODO : Move just loaded to room (go into X then away then backstep & try to load CP)
 type alias Game =
   { room : Room
   , alive : Bool
@@ -74,7 +75,7 @@ saveCheckpoint game =
     else game
 
 afterAction : Game -> Game
-afterAction = ifAlive updateRoom << ifAlive (aiTurn << triggerSword)
+afterAction = ifAlive (onRoom Room.turn << updateRoom) << ifAlive (aiTurn << triggerSword)
 
 chain : (a -> Maybe a) -> a -> a -> a
 chain f i a = Maybe.withDefault a (f i)
