@@ -37,7 +37,6 @@ tileD = String.fromInt tileDim
 type alias Model =
   { game : Game
   , animationTick : Int
-  , justLoaded : Bool
   , effect : Maybe Effect
   }
 
@@ -58,8 +57,9 @@ init () =
         , backsteps = []
         , checkpoints = [currentRoom]
         , level = Levels.Level1.level
+        , justLoaded = False
         }
-      , justLoaded = False
+      -- , justLoaded = False
       , effect = Nothing
       , animationTick = 0
       }
@@ -76,7 +76,7 @@ update msg model =
     AnimationRate delta -> ( tickEffect delta model, Cmd.none )
 
     KeyPress "Backspace" -> ( undo model, Cmd.none )
-    KeyPress "r" -> ( loadCheckpoint model, Cmd.none )
+    KeyPress "r" -> ( onGame Game.loadCheckpoint model, Cmd.none )
 
     KeyPress "q" -> ( onGame (Game.turn Dir.left) model, Cmd.none )
     KeyPress "w" -> ( onGame (Game.turn Dir.right) model, Cmd.none )
@@ -98,23 +98,6 @@ update msg model =
 undo : Model -> Model
 undo model = { model | game = Game.undo model.game }
 
-loadCheckpoint : Model -> Model
-loadCheckpoint model =
-  case model.game.checkpoints of
-    x :: xs ->
-      { model
-      | game =
-        { room = x
-        , alive = True
-        , backsteps = []
-        , checkpoints = xs
-        , level = model.game.level
-        }
-      , justLoaded = True
-      }
-
-    _ -> model
-
 tick : Model -> Model
 tick model =
   { model
@@ -130,13 +113,13 @@ tickEffect tickDelta model =
         then
           { model
           | effect = Nothing
-          , justLoaded = False
           , game =
             { room = room
             , backsteps = []
             , checkpoints = [room]
             , alive = True
             , level = model.game.level
+            , justLoaded = False
             }
           }
         else

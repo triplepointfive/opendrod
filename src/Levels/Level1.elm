@@ -10,8 +10,8 @@ import Utils exposing (Point)
 
 level : Level.Level
 level =
-  -- { init = buildRoom False (14, 15) Dir.E roomm1m1
-  { init = buildRoom False (37, 14) Dir.E roomm1m1
+  { init = buildRoom False (16, 15) Dir.E roomm1m1
+  -- { init = buildRoom False (37, 14) Dir.E roomm1m1
   -- { init = buildRoom False (20, 14) Dir.E room02
   , currentRoomId = (-1, -1)
   -- , currentRoomId = (0, 2)
@@ -80,13 +80,13 @@ roomm1m1 =
     , "####                              ####"
     , "####                              ####"
     , "####                                  "
+    , "####             X                    "
     , "####                                  "
     , "####                                  "
-    , "####        RRRRRR                    "
     , "####                              ####"
     , "####                              ####"
-    , "####                              ####"
-    , "####                              ####"
+    , "####            RRRRRR            ####"
+    , "####            RRRR              ####"
     , "####                              ####"
     , "####                              ####"
     , "####                              ####"
@@ -100,6 +100,7 @@ roomm1m1 =
     ]
   , repository =
     [ ('R', Creature)
+    , ('X', Tile Checkpoint)
     ]
   }
 

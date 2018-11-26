@@ -1,4 +1,4 @@
-module Game exposing (Game, move, turn, undo)
+module Game exposing (Game, move, turn, undo, loadCheckpoint)
 
 import Array
 import Dict
@@ -17,6 +17,7 @@ type alias Game =
   , backsteps : List Room
   , checkpoints : List Room
   , level : Level.Level
+  , justLoaded : Bool
   }
 
 undo : Game -> Game
@@ -26,10 +27,25 @@ undo game =
       { game
       | room = x
       , backsteps = xs
-      , alive = True -- TODO: Consider moving to currentRoom
+      , alive = True
       }
     _ -> game
 
+loadCheckpoint : Game -> Game
+loadCheckpoint game =
+  case game.checkpoints of
+    x :: xs ->
+      { game
+      | room = x
+      , alive = True
+      , backsteps = []
+      , checkpoints = xs
+      , justLoaded = True
+      }
+
+    _ -> game
+
+-- TODO: Check whether to save checkpoint (updateCheckPoint) on turning while standing on X
 turn : (Dir.Dir -> Dir.Dir) -> Game -> Game
 turn f = afterAction << onRoom (Room.turnSword f) << saveBackstep
 
@@ -37,10 +53,10 @@ move : Dir.Dir -> Game -> Game
 move dir = ifAlive (beforeAction >> moveAction dir)
 
 beforeAction : Game -> Game
-beforeAction = saveBackstep
+beforeAction = saveBackstep >> saveCheckpoint
 
 moveAction : Dir.Dir -> Game -> Game
-moveAction dir g = chain (leave dir) g <| chain (Maybe.map afterAction << movePlayer dir) g <| failMove g
+moveAction dir g = chain (leave dir) g <| chain (Maybe.map afterAction << movePlayer dir << updateCheckPoint) g <| failMove g
 
 onRoom : (Room -> Room) -> Game -> Game
 onRoom f model = { model | room = f model.room }
@@ -50,6 +66,12 @@ onLevel f model = { model | level = f model.level }
 
 saveBackstep : Game -> Game
 saveBackstep game = { game | backsteps = [game.room] }
+
+saveCheckpoint : Game -> Game
+saveCheckpoint game =
+  if game.justLoaded
+    then { game | checkpoints = game.room :: game.checkpoints, justLoaded = False }
+    else game
 
 afterAction : Game -> Game
 afterAction = ifAlive updateRoom << ifAlive (aiTurn << triggerSword)
@@ -68,9 +90,87 @@ moveTo dir { room } =
 failMove : Game -> Game
 failMove = afterAction
 
-
 roomDelta : Point -> Room -> Point
 roomDelta (x, y) { width } = if x < 0 then (-1, 0) else if y < 0 then (0, -1) else if x >= width then (1, 0) else (0, 1)
+
+destPos : Dir.Dir -> Room -> Point
+destPos dir { width, playerCoord } = add (Dir.delta dir) (toPoint width playerCoord)
+
+leave : Dir.Dir -> Game -> Maybe Game
+leave dir game =
+  let
+    dest = destPos dir game.room
+    x = roomDelta dest game.room
+    adj = add x game.level.currentRoomId
+  in
+  Maybe.withDefault Nothing <| canDo (Room.isOut dest << .room) (goToRoom x << enterLevel adj) game
+
+enterLevel : Point -> Game -> Game
+enterLevel roomId = onLevel (Level.enter roomId)
+
+-- TODO: Rethink of using updateRoom here
+goToRoom : Point -> Game -> Maybe Game
+goToRoom pos game = Maybe.map (updateRoom << setRoom game) (Level.buildCurrentRoom (Room.shiftPos pos game.room) game.room.playerDir game.level)
+
+setRoom : Game -> Room -> Game
+setRoom game room = { game | room = room, checkpoints = [room], backsteps = [] }
+
+swordToggle : Room -> Room
+swordToggle room =
+  case Array.get room.swordPos room.blueprint of
+    Just (Orb actions) -> Room.mapRoomTiles (orbAction actions) room
+    _ -> room
+
+orbAction : List (ObsticalId, OrbAction) -> Tile -> Tile
+orbAction actions tile =
+  case tile of
+    Door id state ->
+      case List.filter (\(i, _) -> i == id) actions of
+        (_, action) :: _ ->
+          Door id <| case action of
+            Close -> Closed
+            ToOpen -> Open
+            Toggle -> if state == Closed then Open else Closed
+        _ -> tile
+    _ -> tile
+
+triggerSword : Game -> Game
+triggerSword = onRoom (swordToggle << swordKill)
+
+swordKill : Room -> Room
+swordKill room = { room | creatures = List.filter ((/=) room.swordPos) room.creatures }
+
+updateRoom : Game -> Game
+updateRoom = ifClear updateClearRoom
+
+updateClearRoom : Game -> Game
+updateClearRoom = onLevel Level.completeRoom << onRoom Room.openGreenDoor
+
+updateCheckPoint : Game -> Game
+updateCheckPoint game =
+  case Array.get game.room.playerCoord game.room.blueprint of
+    Just Checkpoint ->
+      { game
+      | checkpoints = game.room :: game.checkpoints
+      }
+
+    _ -> game
+
+ifClear : (Game -> Game) -> Game -> Game
+ifClear f game = if Room.isClear game.room then f game else game
+
+aiTurn : Game -> Game
+aiTurn game = List.foldl creatureTurn game game.room.creatures
+
+ifAlive : (Game -> Game) -> Game -> Game
+ifAlive f game = if game.alive then f game else game
+
+creatureTurn : Creature -> Game -> Game
+creatureTurn creature = ifAlive (updateAlive << onRoom (AI.roach creature))
+
+updateAlive : Game -> Game
+updateAlive game = { game | alive = List.all ((/=) game.room.playerCoord) game.room.creatures }
+
 
 --   Leave delta newPlayerPos ->
 --     let newRoomId = add model.level.currentRoomId delta in
@@ -98,28 +198,6 @@ roomDelta (x, y) { width } = if x < 0 then (-1, 0) else if y < 0 then (0, -1) el
 --            ( modBy level.width (px + fst delta)
 --            , modBy level.height (py + snd delta)
 --            )
-
-destPos : Dir.Dir -> Room -> Point
-destPos dir { width, playerCoord } = add (Dir.delta dir) (toPoint width playerCoord)
-
-leave : Dir.Dir -> Game -> Maybe Game
-leave dir game =
-  let
-    dest = destPos dir game.room
-    x = roomDelta dest game.room
-    adj = add x game.level.currentRoomId
-  in
-  Maybe.withDefault Nothing <| canDo (Room.isOut dest << .room) (goToRoom x << enterLevel adj) game
-
-enterLevel : Point -> Game -> Game
-enterLevel roomId = onLevel (Level.enter roomId)
-
--- TODO: Rethink of using updateRoom here
-goToRoom : Point -> Game -> Maybe Game
-goToRoom pos game = Maybe.map (updateRoom << setRoom game) (Level.buildCurrentRoom (Room.shiftPos pos game.room) game.room.playerDir game.level)
-
-setRoom : Game -> Room -> Game
-setRoom game room = { game | room = room, checkpoints = [room], backsteps = [] }
 
 -- withMAction : (Room -> MoveResult) -> Model -> Model
 -- withMAction action model = model
@@ -176,56 +254,3 @@ setRoom game room = { game | room = room, checkpoints = [room], backsteps = [] }
   --       else postProcessTile afterActionModel
   -- else
   --   model
-
-swordToggle : Room -> Room
-swordToggle room =
-  case Array.get room.swordPos room.blueprint of
-    Just (Orb actions) -> Room.mapRoomTiles (orbAction actions) room
-    _ -> room
-
-orbAction : List (ObsticalId, OrbAction) -> Tile -> Tile
-orbAction actions tile =
-  case tile of
-    Door id state ->
-      case List.filter (\(i, _) -> i == id) actions of
-        (_, action) :: _ ->
-          Door id <| case action of
-            Close -> Closed
-            ToOpen -> Open
-            Toggle -> if state == Closed then Open else Closed
-        _ -> tile
-    _ -> tile
-
-triggerSword : Game -> Game
-triggerSword = onRoom (swordToggle << swordKill)
-
-swordKill : Room -> Room
-swordKill room = { room | creatures = List.filter ((/=) room.swordPos) room.creatures }
-
-updateRoom : Game -> Game
-updateRoom = updateCheckPoint << ifClear (onLevel Level.completeRoom << onRoom Room.openGreenDoor)
-
-updateCheckPoint : Game -> Game
-updateCheckPoint game =
-  case Array.get game.room.playerCoord game.room.blueprint of
-    Just Checkpoint ->
-      { game
-      | checkpoints = game.room :: game.checkpoints
-      }
-
-    _ -> game
-
-ifClear : (Game -> Game) -> Game -> Game
-ifClear f game = if Room.isClear game.room then f game else game
-
-aiTurn : Game -> Game
-aiTurn game = List.foldl creatureTurn game game.room.creatures
-
-ifAlive : (Game -> Game) -> Game -> Game
-ifAlive f game = if game.alive then f game else game
-
-creatureTurn : Creature -> Game -> Game
-creatureTurn creature = ifAlive (updateAlive << onRoom (AI.roach creature))
-
-updateAlive : Game -> Game
-updateAlive game = { game | alive = List.all ((/=) game.room.playerCoord) game.room.creatures }
