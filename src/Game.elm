@@ -64,9 +64,6 @@ afterAction = ifAlive updateRoom << ifAlive (aiTurn << triggerSword)
 chain : (a -> Maybe a) -> a -> a -> a
 chain f i a = Maybe.withDefault a (f i)
 
-leave : Dir.Dir -> Game -> Maybe Game
-leave dir = const Nothing
-
 movePlayer : Dir.Dir -> Game -> Maybe Game
 movePlayer dir = canDo (moveTo dir) (onRoom (Room.movePlayer dir))
 
@@ -78,20 +75,8 @@ moveTo dir { room } =
 failMove : Game -> Game
 failMove = afterAction
 
-
-  -- let
-  --   dest = destPos dir game.room
-  --   adj = add (roomDelta dest game.room) game.level.currentRoomId
-  -- in
-  -- if outOfRoom dest game.room && canLeave adj game
-  --   then leaveRoom game adj
-  --   else moveTo dest
-
 outOfRoom : Point -> Room -> Bool
 outOfRoom (x, y) { width, height } = x < 0 || y < 0 || x >= width || y >= height
-
-canLeave : Point -> Game -> Bool
-canLeave dest { level } = Dict.member dest level.rooms
 
 roomDelta : Point -> Room -> Point
 roomDelta (x, y) { width } = if x < 0 then (-1, 0) else if y < 0 then (0, -1) else if x >= width then (1, 0) else (0, 1)
@@ -125,6 +110,31 @@ roomDelta (x, y) { width } = if x < 0 then (-1, 0) else if y < 0 then (0, -1) el
 
 destPos : Dir.Dir -> Room -> Point
 destPos dir { width, playerCoord } = add (Dir.delta dir) (toCoords width playerCoord)
+
+leave : Dir.Dir -> Game -> Maybe Game
+leave dir game =
+  let
+    dest = destPos dir game.room
+    adj = add (roomDelta dest game.room) game.level.currentRoomId
+  in
+  Maybe.withDefault Nothing <| canDo (outOfRoom dest << .room) (goToRoom dest << updateLevels adj) game
+
+updateLevels : Point -> Game -> Game
+updateLevels roomId game =
+  { game
+  | level = Level.move (Room.isClear game.room) roomId game.level
+  }
+
+-- TODO: Rebuild checkpoints on room leave
+goToRoom : Point -> Game -> Maybe Game
+goToRoom pos game = Maybe.map (setRoom game) (Level.buildCurrentRoom (Room.shiftPos pos game.room) game.room.playerDir game.level)
+
+setRoom : Game -> Room -> Game
+setRoom game room = { game | room = room, checkpoints = [room], backsteps = [] }
+
+
+
+
 
 -- withMAction : (Room -> MoveResult) -> Model -> Model
 -- withMAction action model = model
@@ -201,7 +211,7 @@ updateRoom : Game -> Game
 updateRoom = ifClear (onRoom (mapRoomTiles (\tile -> if tile == GreenDoor Closed then GreenDoor Open else tile)))
 
 ifClear : (Game -> Game) -> Game -> Game
-ifClear f game = if List.isEmpty game.room.creatures then f game else game
+ifClear f game = if Room.isClear game.room then f game else game
 
 mapRoomTiles : (Tile -> Tile) -> Room -> Room
 mapRoomTiles f room = { room | blueprint = Array.map f room.blueprint }

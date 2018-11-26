@@ -52,6 +52,12 @@ turnSword f room = buildSwordPos { room | playerDir = f room.playerDir }
 buildSwordPos : Room -> Room
 buildSwordPos room = { room | swordPos = Dir.moveCoord room.width room.playerCoord room.playerDir }
 
+isClear : Room -> Bool
+isClear = List.isEmpty << .creatures
+
+shiftPos : Point -> Room -> Point
+shiftPos (x, y) { width, height } = (modBy width x , modBy height y)
+
 canRPlayerMoveTo : Coord -> Room -> Coord -> Bool
 canRPlayerMoveTo prevCoord level coord =
   let

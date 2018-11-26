@@ -78,6 +78,27 @@ move : Bool -> RoomId -> Level -> Level
 move cleared to level =
   leave cleared level |> enter to
 
+buildCurrentRoom : Point -> Dir.Dir -> Level -> Maybe Room.Room
+buildCurrentRoom pos dir level =
+  case Dict.get level.currentRoomId level.rooms of
+    Just { builder, state } -> Just <| buildRoom (state == Complete) pos dir builder
+    Nothing -> Nothing
+
+buildRoom : Bool -> Point -> Dir.Dir -> RoomBuilder -> Room.Room
+buildRoom completed (px, py) dir builder =
+  let
+    (blueprint, creatures) = buildBlueprint completed builder
+  in
+    { blueprint = blueprint
+    , creatures = creatures
+    , swordPos = Dir.moveCoord 38 (px + py * 38) dir
+    , playerCoord = (px + py * 38)
+    , playerDir = dir
+    , width = 38
+    , height = 32
+    , wallTiles = buildWalls blueprint 38
+    }
+
 buildBlueprint : Bool -> RoomBuilder -> (Array.Array Tile, List Creature)
 buildBlueprint completed { blueprint, repository } =
   let
@@ -168,18 +189,3 @@ buildWalls blueprint width =
         _ -> (0, 0)
   in
     Array.indexedMap tileToWall blueprint
-
-buildRoom : Bool -> Point -> Dir.Dir -> RoomBuilder -> Room.Room
-buildRoom completed (px, py) dir builder =
-  let
-    (blueprint, creatures) = buildBlueprint completed builder
-  in
-    { blueprint = blueprint
-    , creatures = creatures
-    , swordPos = Dir.moveCoord 38 (px + py * 38) dir
-    , playerCoord = (px + py * 38)
-    , playerDir = dir
-    , width = 38
-    , height = 32
-    , wallTiles = buildWalls blueprint 38
-    }
