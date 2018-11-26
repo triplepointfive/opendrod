@@ -45,12 +45,13 @@ enter id level =
       }
   in
   { level
-  | rooms = Dict.update id (Maybe.andThen (Just << enterState)) level.rooms
+  | rooms = Dict.update id (Maybe.map enterState) level.rooms
   , currentRoomId = id
   }
 
-completeRoom : RoomId -> Level -> Level
-completeRoom id level =
+-- TODO : Undo room completion on backstep or checkpoint reload
+completeRoom : Level -> Level
+completeRoom level =
   let
     enterState room =
       { room
@@ -58,25 +59,8 @@ completeRoom id level =
       }
   in
   { level
-  | rooms = Dict.update id (Maybe.andThen (Just << enterState)) level.rooms
-  , currentRoomId = id
+  | rooms = Dict.update level.currentRoomId (Maybe.map enterState) level.rooms
   }
-
-leave : Bool -> Level -> Level
-leave cleared level =
-  let
-    leaveState room =
-      { room
-      | state = if cleared then Complete else room.state
-      }
-  in
-  { level
-  | rooms = Dict.update level.currentRoomId (Maybe.andThen (Just << leaveState)) level.rooms
-  }
-
-move : Bool -> RoomId -> Level -> Level
-move cleared to level =
-  leave cleared level |> enter to
 
 buildCurrentRoom : Point -> Dir.Dir -> Level -> Maybe Room.Room
 buildCurrentRoom pos dir level =

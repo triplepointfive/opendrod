@@ -45,6 +45,9 @@ moveAction dir g = chain (leave dir) g <| chain (Maybe.map afterAction << movePl
 onRoom : (Room -> Room) -> Game -> Game
 onRoom f model = { model | room = f model.room }
 
+onLevel : (Level.Level -> Level.Level) -> Game -> Game
+onLevel f model = { model | level = f model.level }
+
 saveBackstep : Game -> Game
 saveBackstep game = { game | backsteps = [game.room] }
 
@@ -106,16 +109,14 @@ leave dir game =
     x = roomDelta dest game.room
     adj = add x game.level.currentRoomId
   in
-  Maybe.withDefault Nothing <| canDo (Room.isOut dest << .room) (goToRoom x << updateLevels adj) game
+  Maybe.withDefault Nothing <| canDo (Room.isOut dest << .room) (goToRoom x << enterLevel adj) game
 
-updateLevels : Point -> Game -> Game
-updateLevels roomId game =
-  { game
-  | level = Level.move (Room.isClear game.room) roomId game.level
-  }
+enterLevel : Point -> Game -> Game
+enterLevel roomId = onLevel (Level.enter roomId)
 
+-- TODO: Rethink of using updateRoom here
 goToRoom : Point -> Game -> Maybe Game
-goToRoom pos game = Maybe.map (setRoom game) (Level.buildCurrentRoom (Room.shiftPos pos game.room) game.room.playerDir game.level)
+goToRoom pos game = Maybe.map (updateRoom << setRoom game) (Level.buildCurrentRoom (Room.shiftPos pos game.room) game.room.playerDir game.level)
 
 setRoom : Game -> Room -> Game
 setRoom game room = { game | room = room, checkpoints = [room], backsteps = [] }
@@ -202,7 +203,7 @@ swordKill : Room -> Room
 swordKill room = { room | creatures = List.filter ((/=) room.swordPos) room.creatures }
 
 updateRoom : Game -> Game
-updateRoom = updateCheckPoint << ifClear (onRoom (Room.toogleGreenDoor))
+updateRoom = updateCheckPoint << ifClear (onLevel Level.completeRoom << onRoom Room.openGreenDoor)
 
 updateCheckPoint : Game -> Game
 updateCheckPoint game =

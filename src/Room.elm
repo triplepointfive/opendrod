@@ -49,8 +49,8 @@ movePlayer dir room = buildSwordPos { room | playerCoord = Dir.moveCoord room.wi
 mapRoomTiles : (Tile -> Tile) -> Room -> Room
 mapRoomTiles f room = { room | blueprint = Array.map f room.blueprint }
 
-toogleGreenDoor : Room -> Room
-toogleGreenDoor = mapRoomTiles (\tile -> if tile == GreenDoor Closed then GreenDoor Open else tile)
+openGreenDoor : Room -> Room
+openGreenDoor = mapRoomTiles (\tile -> if tile == GreenDoor Closed then GreenDoor Open else tile)
 
 turnSword : (Dir.Dir -> Dir.Dir) -> Room -> Room
 turnSword f room = buildSwordPos { room | playerDir = f room.playerDir }
