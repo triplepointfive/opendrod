@@ -46,11 +46,27 @@ type MoveResult = Move Room | Leave Point Point
 movePlayer : Dir.Dir -> Room -> Room
 movePlayer dir room = buildSwordPos { room | playerCoord = Dir.moveCoord room.width room.playerCoord dir }
 
+mapRoomTiles : (Tile -> Tile) -> Room -> Room
+mapRoomTiles f room = { room | blueprint = Array.map f room.blueprint }
+
+toogleGreenDoor : Room -> Room
+toogleGreenDoor = mapRoomTiles (\tile -> if tile == GreenDoor Closed then GreenDoor Open else tile)
+
 turnSword : (Dir.Dir -> Dir.Dir) -> Room -> Room
 turnSword f room = buildSwordPos { room | playerDir = f room.playerDir }
 
+isOut : Point -> Room -> Bool
+isOut (x, y) { width, height } = x < 0 || y < 0 || x >= width || y >= height
+
+-- PRETTIFY
 buildSwordPos : Room -> Room
-buildSwordPos room = { room | swordPos = Dir.moveCoord room.width room.playerCoord room.playerDir }
+buildSwordPos room =
+  { room | swordPos = toCoord (either identity (const (-1, -1)) (\p -> isOut p room) (destSwordPos room)) room.width }
+
+destSwordPos : Room -> Point
+destSwordPos { width, playerCoord, playerDir } = Dir.move playerDir (toCoords width playerCoord)
+
+  -- { room | swordPos =  }
 
 isClear : Room -> Bool
 isClear = List.isEmpty << .creatures

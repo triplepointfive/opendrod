@@ -28,6 +28,9 @@ even i t f =
 toCoords : Int -> Int -> Point
 toCoords w i = (modBy w i , i // w)
 
+toCoord : Point -> Int -> Int
+toCoord (x, y) w = w * y + x
+
 fst : (a, b) -> a
 fst (a, _) = a
 
@@ -45,3 +48,6 @@ pair a b = (a, b)
 
 canDo : (b -> Bool) -> (b -> a) -> b -> Maybe a
 canDo flag f v = if flag v then Just (f v) else Nothing
+
+either : (a -> b) -> (a -> b) -> (a -> Bool) -> a -> b
+either l r c v = if c v then r v else l v

@@ -45,16 +45,6 @@ moveAction dir g = chain (leave dir) g <| chain (Maybe.map afterAction << movePl
 onRoom : (Room -> Room) -> Game -> Game
 onRoom f model = { model | room = f model.room }
 
--- postProcessTile : Model -> Model
--- postProcessTile model =
---   case Array.get model.currentRoom.playerCoord model.currentRoom.blueprint of
---     Just Checkpoint ->
---       { model
---       | checkpoints = model.currentRoom :: model.checkpoints
---       }
---
---     _ -> model
-
 saveBackstep : Game -> Game
 saveBackstep game = { game | backsteps = [game.room] }
 
@@ -75,8 +65,6 @@ moveTo dir { room } =
 failMove : Game -> Game
 failMove = afterAction
 
-outOfRoom : Point -> Room -> Bool
-outOfRoom (x, y) { width, height } = x < 0 || y < 0 || x >= width || y >= height
 
 roomDelta : Point -> Room -> Point
 roomDelta (x, y) { width } = if x < 0 then (-1, 0) else if y < 0 then (0, -1) else if x >= width then (1, 0) else (0, 1)
@@ -118,7 +106,7 @@ leave dir game =
     x = roomDelta dest game.room
     adj = add x game.level.currentRoomId
   in
-  Maybe.withDefault Nothing <| canDo (outOfRoom dest << .room) (goToRoom x << updateLevels adj) game
+  Maybe.withDefault Nothing <| canDo (Room.isOut dest << .room) (goToRoom x << updateLevels adj) game
 
 updateLevels : Point -> Game -> Game
 updateLevels roomId game =
@@ -188,32 +176,10 @@ setRoom game room = { game | room = room, checkpoints = [room], backsteps = [] }
   -- else
   --   model
 
-
--- playerMoveDir : Dir.Dir -> Room -> MoveResult
--- playerMoveDir dir level =
---   let
---     destPos = Dir.moveCoord level.width level.playerCoord dir
---     (px, py) = toCoords level.width level.playerCoord
---     (x, y) = Dir.move dir (px, py)
---     (lx, ly) = Dir.delta dir
---   in
---     if canPlayerMoveTo level.playerCoord level destPos
---     then Move { level | playerCoord = destPos }
---     else if x >= 0 && y >= 0 && x < level.width && y < level.height
---       then Move level
---       else
---         let delta = if x < 0 || x >= level.width then (lx, 0) else (0, ly) in
---         Leave
---           delta
---
---           ( modBy level.width (px + fst delta)
---           , modBy level.height (py + snd delta)
---           )
-
 swordToggle : Room -> Room
 swordToggle room =
   case Array.get room.swordPos room.blueprint of
-    Just (Orb actions) -> mapRoomTiles (orbAction actions) room
+    Just (Orb actions) -> Room.mapRoomTiles (orbAction actions) room
     _ -> room
 
 orbAction : List (ObsticalId, OrbAction) -> Tile -> Tile
@@ -236,13 +202,20 @@ swordKill : Room -> Room
 swordKill room = { room | creatures = List.filter ((/=) room.swordPos) room.creatures }
 
 updateRoom : Game -> Game
-updateRoom = ifClear (onRoom (mapRoomTiles (\tile -> if tile == GreenDoor Closed then GreenDoor Open else tile)))
+updateRoom = updateCheckPoint << ifClear (onRoom (Room.toogleGreenDoor))
+
+updateCheckPoint : Game -> Game
+updateCheckPoint game =
+  case Array.get game.room.playerCoord game.room.blueprint of
+    Just Checkpoint ->
+      { game
+      | checkpoints = game.room :: game.checkpoints
+      }
+
+    _ -> game
 
 ifClear : (Game -> Game) -> Game -> Game
 ifClear f game = if Room.isClear game.room then f game else game
-
-mapRoomTiles : (Tile -> Tile) -> Room -> Room
-mapRoomTiles f room = { room | blueprint = Array.map f room.blueprint }
 
 aiTurn : Game -> Game
 aiTurn game = List.foldl creatureTurn game game.room.creatures

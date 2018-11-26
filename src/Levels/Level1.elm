@@ -12,6 +12,7 @@ level : Level.Level
 level =
   -- { init = buildRoom False (14, 15) Dir.E roomm1m1
   { init = buildRoom False (37, 14) Dir.E roomm1m1
+  -- { init = buildRoom False (20, 14) Dir.E room02
   , currentRoomId = (-1, -1)
   , complete = False
   , rooms = Dict.fromList

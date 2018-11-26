@@ -85,14 +85,14 @@ buildCurrentRoom pos dir level =
     Nothing -> Nothing
 
 buildRoom : Bool -> Point -> Dir.Dir -> RoomBuilder -> Room.Room
-buildRoom completed (px, py) dir builder =
+buildRoom completed pos dir builder =
   let
     (blueprint, creatures) = buildBlueprint completed builder
   in
-    { blueprint = blueprint
+    Room.buildSwordPos { blueprint = blueprint
     , creatures = creatures
-    , swordPos = Dir.moveCoord 38 (px + py * 38) dir
-    , playerCoord = (px + py * 38)
+    , swordPos = toCoord pos 38
+    , playerCoord = toCoord pos 38
     , playerDir = dir
     , width = 38
     , height = 32
