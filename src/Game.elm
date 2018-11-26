@@ -97,7 +97,7 @@ roomDelta (x, y) { width } = if x < 0 then (-1, 0) else if y < 0 then (0, -1) el
 --            )
 
 destPos : Dir.Dir -> Room -> Point
-destPos dir { width, playerCoord } = add (Dir.delta dir) (toCoords width playerCoord)
+destPos dir { width, playerCoord } = add (Dir.delta dir) (toPoint width playerCoord)
 
 leave : Dir.Dir -> Game -> Maybe Game
 leave dir game =

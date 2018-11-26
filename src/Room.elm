@@ -64,7 +64,7 @@ buildSwordPos room =
   { room | swordPos = toCoord (either identity (const (-1, -1)) (\p -> isOut p room) (destSwordPos room)) room.width }
 
 destSwordPos : Room -> Point
-destSwordPos { width, playerCoord, playerDir } = Dir.move playerDir (toCoords width playerCoord)
+destSwordPos { width, playerCoord, playerDir } = Dir.move playerDir (toPoint width playerCoord)
 
   -- { room | swordPos =  }
 
@@ -73,13 +73,13 @@ isClear = List.isEmpty << .creatures
 
 shiftPos : Point -> Room -> Point
 shiftPos (x, y) { width, height, playerCoord } =
-  let (px, py) = toCoords width playerCoord in (modBy width <| x + px, modBy height <| y + py)
+  let (px, py) = toPoint width playerCoord in (modBy width <| x + px, modBy height <| y + py)
 
 canRPlayerMoveTo : Coord -> Room -> Coord -> Bool
 canRPlayerMoveTo prevCoord level coord =
   let
     isUntaken = List.isEmpty <| List.filter ((==) coord) level.creatures
-    dir = Dir.fromDelta (sub (toCoords level.width coord) (toCoords level.width prevCoord))
+    dir = Dir.fromDelta (sub (toPoint level.width coord) (toPoint level.width prevCoord))
 
     canLeave = case Array.get prevCoord level.blueprint of
       Just (Arrow d) -> not (Dir.isOpposite d dir)

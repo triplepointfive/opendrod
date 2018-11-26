@@ -223,7 +223,7 @@ drawMinimapRoom (ox, oy) (dx, dy) room =
         :: List.concat (List.indexedMap
           (\i tile ->
             let
-              (tdx, tdy) = toCoords 38 i
+              (tdx, tdy) = toPoint 38 i
             in
             if tile
               then [
@@ -271,7 +271,7 @@ tileTags offset room (i, tag) =
 tileBackground : Point -> Room -> Coord -> Tile -> List (Html Msg)
 tileBackground offset room i tile =
   let
-    (px, py) = toCoords room.width i
+    (px, py) = toPoint room.width i
     displayPos = Utils.sub (px, py) offset
 
     background =
@@ -326,7 +326,7 @@ tileBackground offset room i tile =
 
 tileObjects : Point -> Coord -> Room -> List (Html Msg)
 tileObjects offset i room =
-  let p = Utils.sub (toCoords room.width i) offset
+  let p = Utils.sub (toPoint room.width i) offset
   in
   if List.member i room.creatures
     then

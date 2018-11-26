@@ -25,8 +25,8 @@ even : Int -> a -> a -> a
 even i t f =
   if modBy 2 i == 0 then t else f
 
-toCoords : Int -> Int -> Point
-toCoords w i = (modBy w i , i // w)
+toPoint : Int -> Int -> Point
+toPoint w i = (modBy w i , i // w)
 
 toCoord : Point -> Int -> Int
 toCoord (x, y) w = w * y + x

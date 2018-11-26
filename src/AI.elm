@@ -29,8 +29,8 @@ roach coord level =
 squareDistanceToPlayer : Room -> Creature -> Int
 squareDistanceToPlayer level coords =
   let
-    (px, py) = toCoords level.width level.playerCoord
-    (x, y) = toCoords level.width coords
+    (px, py) = toPoint level.width level.playerCoord
+    (x, y) = toPoint level.width coords
     (dx, dy) = (px - x, py - y)
   in
     dx * dx + dy * dy
