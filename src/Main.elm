@@ -75,7 +75,7 @@ update msg model =
     Tick -> ( tick model, Cmd.none )
     AnimationRate delta -> ( tickEffect delta model, Cmd.none )
 
-    -- KeyPress "Backspace" -> ( undo model, Cmd.none )
+    KeyPress "Backspace" -> ( undo model, Cmd.none )
     KeyPress "r" -> ( loadCheckpoint model, Cmd.none )
 
     KeyPress "q" -> ( onGame (Game.turn Dir.left) model, Cmd.none )
@@ -95,16 +95,8 @@ update msg model =
 
     Click tile -> ( addClickTileEffect tile model, Cmd.none )
 
--- undo : Model -> Model
--- undo model =
---   case model.game.backsteps of
---     x :: xs ->
---       { model
---       | currentRoom = x
---       , backsteps = xs
---       , playerAlive = True -- TODO: Consider moving to currentRoom
---       }
---     _ -> model
+undo : Model -> Model
+undo model = { model | game = Game.undo model.game }
 
 loadCheckpoint : Model -> Model
 loadCheckpoint model =

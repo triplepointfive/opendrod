@@ -1,8 +1,9 @@
-module Game exposing (Game, move, turn)
+module Game exposing (Game, move, turn, undo)
 
 import Array
 import Dict
 import Maybe
+import Debug
 
 import AI
 import Dir
@@ -18,6 +19,29 @@ type alias Game =
   , level : Level.Level
   }
 
+undo : Game -> Game
+undo game =
+  case game.backsteps of
+    x :: xs ->
+      { game
+      | room = x
+      , backsteps = xs
+      , alive = True -- TODO: Consider moving to currentRoom
+      }
+    _ -> game
+
+turn : (Dir.Dir -> Dir.Dir) -> Game -> Game
+turn f = afterAction << onRoom (Room.turnSword f) << saveBackstep
+
+move : Dir.Dir -> Game -> Game
+move dir = ifAlive (beforeAction >> moveAction dir)
+
+beforeAction : Game -> Game
+beforeAction = saveBackstep
+
+moveAction : Dir.Dir -> Game -> Game
+moveAction dir g = chain (leave dir) g <| chain (Maybe.map afterAction << movePlayer dir) g <| failMove g
+
 onRoom : (Room -> Room) -> Game -> Game
 onRoom f model = { model | room = f model.room }
 
@@ -31,17 +55,14 @@ onRoom f model = { model | room = f model.room }
 --
 --     _ -> model
 
-turn : (Dir.Dir -> Dir.Dir) -> Game -> Game
-turn f = afterPlayer << onRoom (Room.turnSword f)
+saveBackstep : Game -> Game
+saveBackstep game = { game | backsteps = [game.room] }
 
-afterPlayer : Game -> Game
-afterPlayer = ifAlive (updateRoom) << ifAlive (aiTurn << triggerSword)
+afterAction : Game -> Game
+afterAction = ifAlive updateRoom << ifAlive (aiTurn << triggerSword)
 
 chain : (a -> Maybe a) -> a -> a -> a
 chain f i a = Maybe.withDefault a (f i)
-
-move : Dir.Dir -> Game -> Game
-move dir game = chain (leave dir) game <| chain (Maybe.map afterPlayer << movePlayer dir) game <| failMove game
 
 leave : Dir.Dir -> Game -> Maybe Game
 leave dir = const Nothing
@@ -55,7 +76,7 @@ moveTo dir { room } =
   canRPlayerMoveTo room.playerCoord room (Dir.moveCoord room.width room.playerCoord dir)
 
 failMove : Game -> Game
-failMove = afterPlayer
+failMove = afterAction
 
 
   -- let
