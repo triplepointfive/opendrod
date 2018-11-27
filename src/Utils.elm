@@ -51,3 +51,6 @@ canDo flag f v = if flag v then Just (f v) else Nothing
 
 either : (a -> b) -> (a -> b) -> (a -> Bool) -> a -> b
 either l r c v = if c v then r v else l v
+
+flip : (a -> b -> c) -> b -> a -> c
+flip f b a = f a b

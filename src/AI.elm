@@ -1,9 +1,11 @@
 module AI exposing (turn, squareDistanceToPlayer)
 
+import Dir
 import Creature exposing (..)
 import Room exposing (..)
 import Utils exposing (..)
 
+import Array
 import Debug
 
 turn : Creature -> Room -> Room
@@ -44,21 +46,35 @@ queen : Coord -> Room -> Room
 queen coord room =
   if List.member (Queen coord) room.creatures
     then
-      let
-        dx = -1 * sign((modBy room.width room.playerCoord) - (modBy room.width coord))
-        dy = -1 * room.width * sign ((room.playerCoord // room.width) - (coord // room.width))
-        directMoves =
-          (dx + dy + coord) ::
-          (List.sortBy (coordSquareDistanceToPlayer room) [dy + coord, dx + coord])
-          -- TODO : Recheck priority
-        newCoord =
-          case List.filter (canMoveTo coord room) directMoves of
-            freeCoord :: _ -> freeCoord
-            _ -> coord
-      in
-      replaceWith (Queen coord) (Queen newCoord) room
+      if room.turn == 29
+        then
+          { room
+          | creatures =
+              room.creatures
+                ++ List.map (flip Larva L1) (List.filter (availableToSpawn room) <| coordsAround coord room)
+          }
+        else
+          let
+            dx = -1 * sign((modBy room.width room.playerCoord) - (modBy room.width coord))
+            dy = -1 * room.width * sign ((room.playerCoord // room.width) - (coord // room.width))
+            directMoves =
+              (dx + dy + coord) ::
+              (List.sortBy (coordSquareDistanceToPlayer room) [dy + coord, dx + coord])
+              -- TODO : Recheck priority
+            newCoord =
+              case List.filter (canMoveTo coord room) directMoves of
+                freeCoord :: _ -> freeCoord
+                _ -> coord
+            in
+            replaceWith (Queen coord) (Queen newCoord) room
     else
       room
+
+coordsAround : Coord -> Room -> List Coord
+coordsAround coord room =
+  List.map (flip toCoord room.width)
+    <| List.filter (not << flip Room.isOut room)
+    <| List.map (flip Dir.move (toPoint room.width coord)) Dir.all
 
 replaceWith : Creature -> Creature -> Room -> Room
 replaceWith old new room =
@@ -81,5 +97,19 @@ coordSquareDistanceToPlayer { width, playerCoord } coords =
     dx * dx + dy * dy
 
 canMoveTo : Coord -> Room -> Coord -> Bool
-canMoveTo prevCoord level coord =
-  canRPlayerMoveTo prevCoord level coord && level.swordPos /= coord
+canMoveTo prevCoord room coord =
+  canRPlayerMoveTo prevCoord room coord && room.swordPos /= coord
+
+-- TODO: Do not spawn under the player or sword
+availableToSpawn : Room -> Coord -> Bool
+availableToSpawn { creatures, blueprint } coord =
+  List.all (not << Creature.isTaken coord) creatures && case Array.get coord blueprint of
+    Nothing -> False
+    Just Floor -> True
+    Just Wall -> False
+    Just (Orb _) -> False
+    Just Checkpoint -> True
+    Just (Door _ _) -> False
+    Just (GreenDoor _) -> False
+    Just (Arrow _) -> True
+

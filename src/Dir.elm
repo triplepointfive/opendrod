@@ -4,6 +4,9 @@ import Utils exposing (..)
 
 type Dir = N | NE | E | SE | S | SW | W | NW
 
+all : List Dir
+all = [N, NE, E, SE, S, SW, W, NW]
+
 moveCoord : Int -> Coord -> Dir -> Coord
 moveCoord w coord dir = let (dx, dy) = delta dir in coord + dx + w * dy
 
