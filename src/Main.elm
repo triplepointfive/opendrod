@@ -382,6 +382,10 @@ tileObjects offset i room =
     c :: _ ->
       case c of
         (Creature.Roach _) -> [ imgTile p (0, 8) Atlas ]
+        (Creature.Larva _ Creature.L1) -> [ imgTile p (1, 3) BaseMeph ]
+        (Creature.Larva _ Creature.L2) -> [ imgTile p (2, 3) BaseMeph ]
+        (Creature.Larva _ Creature.L3) -> [ imgTile p (3, 3) BaseMeph ]
+        (Creature.Larva _ Creature.L4) -> [ imgTile p (4, 3) BaseMeph ]
         --[ imgTile p i (cycle (0, 8) [(1, 8), (2, 8)] animationTick) Atlas ]
     _ ->
       if room.swordPos == i

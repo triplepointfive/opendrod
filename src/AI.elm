@@ -10,6 +10,7 @@ turn : Creature -> Room -> Room
 turn creature =
   case creature of
     Roach coord -> roach coord
+    Larva coord step -> larva coord step
 
 roach : Coord -> Room -> Room
 roach coord room =
@@ -26,11 +27,23 @@ roach coord room =
             freeCoord :: _ -> freeCoord
             _ -> coord
       in
-      { room
-      | creatures = Roach newCoord :: List.filter ((/=) (Roach coord)) room.creatures
-      }
+      replaceWith (Roach coord) (Roach newCoord) room
     else
       room
+
+larva : Coord -> LarvaStep -> Room -> Room
+larva c step = replaceWith (Larva c step) <|
+  case step of
+    L1 -> Larva c L2
+    L2 -> Larva c L3
+    L3 -> Larva c L4
+    L4 -> Roach c
+
+replaceWith : Creature -> Creature -> Room -> Room
+replaceWith old new room =
+  { room
+  | creatures = new :: List.filter((/=) old) room.creatures
+  }
 
 squareDistanceToPlayer : Room -> Coord -> Int
 squareDistanceToPlayer level coords =
