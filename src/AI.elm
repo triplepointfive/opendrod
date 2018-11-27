@@ -11,6 +11,7 @@ turn creature =
   case creature of
     Roach coord -> roach coord
     Larva coord step -> larva coord step
+    Queen coord -> queen coord
 
 roach : Coord -> Room -> Room
 roach coord room =
@@ -21,7 +22,7 @@ roach coord room =
         dy = room.width * sign ((room.playerCoord // room.width) - (coord // room.width))
         directMoves =
           (dx + dy + coord) ::
-          (List.sortBy (squareDistanceToPlayer room) [dy + coord, dx + coord])
+          (List.sortBy (coordSquareDistanceToPlayer room) [dy + coord, dx + coord])
         newCoord =
           case List.filter (canMoveTo coord room) directMoves of
             freeCoord :: _ -> freeCoord
@@ -39,18 +40,43 @@ larva c step = replaceWith (Larva c step) <|
     L3 -> Larva c L4
     L4 -> Roach c
 
+queen : Coord -> Room -> Room
+queen coord room =
+  if List.member (Queen coord) room.creatures
+    then
+      let
+        dx = -1 * sign((modBy room.width room.playerCoord) - (modBy room.width coord))
+        dy = -1 * room.width * sign ((room.playerCoord // room.width) - (coord // room.width))
+        directMoves =
+          (dx + dy + coord) ::
+          (List.sortBy (coordSquareDistanceToPlayer room) [dy + coord, dx + coord])
+          -- TODO : Recheck priority
+        newCoord =
+          case List.filter (canMoveTo coord room) directMoves of
+            freeCoord :: _ -> freeCoord
+            _ -> coord
+      in
+      replaceWith (Queen coord) (Queen newCoord) room
+    else
+      room
+
 replaceWith : Creature -> Creature -> Room -> Room
 replaceWith old new room =
   { room
   | creatures = new :: List.filter((/=) old) room.creatures
   }
 
-squareDistanceToPlayer : Room -> Coord -> Int
-squareDistanceToPlayer level coords =
+squareDistanceToPlayer : Room -> Creature -> Int
+squareDistanceToPlayer room creature = coordSquareDistanceToPlayer room <|
+  case creature of
+    Roach coord -> coord
+    Larva coord _ -> coord
+    Queen coord -> coord
+
+coordSquareDistanceToPlayer : Room -> Coord -> Int
+coordSquareDistanceToPlayer { width, playerCoord } coords =
   let
-    (px, py) = toPoint level.width level.playerCoord
-    (x, y) = toPoint level.width coords
-    (dx, dy) = (px - x, py - y)
+    (dx, dy) = sub (toPoint width playerCoord) (toPoint width coords)
   in
     dx * dx + dy * dy
 

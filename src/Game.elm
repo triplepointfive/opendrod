@@ -161,8 +161,9 @@ updateCheckPoint game =
 ifClear : (Game -> Game) -> Game -> Game
 ifClear f game = if Room.isClear game.room then f game else game
 
+-- TODO: Check whether queens should go in reversed order
 aiTurn : Game -> Game
-aiTurn game = List.foldl creatureTurn game game.room.creatures
+aiTurn game = List.foldl creatureTurn game <| List.sortBy (AI.squareDistanceToPlayer game.room) game.room.creatures
 
 ifAlive : (Game -> Game) -> Game -> Game
 ifAlive f game = if game.alive then f game else game

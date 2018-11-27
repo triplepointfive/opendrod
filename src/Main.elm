@@ -386,6 +386,7 @@ tileObjects offset i room =
         (Creature.Larva _ Creature.L2) -> [ imgTile p (2, 3) BaseMeph ]
         (Creature.Larva _ Creature.L3) -> [ imgTile p (3, 3) BaseMeph ]
         (Creature.Larva _ Creature.L4) -> [ imgTile p (4, 3) BaseMeph ]
+        (Creature.Queen _) -> [ imgTile p (0, 4) Atlas ]
         --[ imgTile p i (cycle (0, 8) [(1, 8), (2, 8)] animationTick) Atlas ]
     _ ->
       if room.swordPos == i
