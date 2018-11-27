@@ -149,23 +149,47 @@ keyDecoder =
   Decode.map KeyPress
     <| Decode.field "key" Decode.string
 
+style : List (String, String) -> Html.Attribute msg
+style = Svg.Attributes.style << String.join "" << List.map (\(k, v) -> k ++ ": " ++ v ++ ";")
+
 view : Model -> Html Msg
 view model =
-  div []
-    [ case model.effect of
-      Just (ChangeRoom _ c (dx, dy)) ->
-        let f s max = max * s * sin( c * pi / 2 + pi / 4 * (s - 1)) in
-        -- let f s max = max * s * (0.5 * (s - 1) + c) in
-        drawRoom
-          ( round <| f (toFloat dx) 1216
-          , round <| f (toFloat dy) 1024
-          )
-          model.game.room
-      _ ->
-        drawRoom (0, 0) model.game.room
-    , lazy (drawMinimap) model.game.level
-    , lazy drawClock model.game.room.turn
-    , div [] [Html.text <| if model.game.alive then "" else "Died" ]
+  div
+    [ style
+      [ ("display", "grid")
+      , ("height", "96%")
+      , ("grid-template-columns", "228px 1fr")
+      , ("position", "fixed")
+      , ("width", "98%")
+      , ("margin", "-8px")
+      , ("background-image", "url(https://www.publicdomainpictures.net/pictures/230000/velka/brick-pattern-1498937731QW6.jpg)")
+      , ("background-size", "500px 500px")
+      , ("padding", "2% 1%")
+      ]
+    ]
+    [ div
+      [ style
+        [("position", "relative")]
+      ]
+      [ lazy drawClock model.game.room.turn
+      , lazy drawMinimap model.game.level
+      ]
+    , div
+      [ style
+        [("position", "relative")]
+      ]
+      [ case model.effect of
+        Just (ChangeRoom _ c (dx, dy)) ->
+          let f s max = max * s * sin( c * pi / 2 + pi / 4 * (s - 1)) in
+          -- let f s max = max * s * (0.5 * (s - 1) + c) in
+          drawRoom
+            ( round <| f (toFloat dx) 1216
+            , round <| f (toFloat dy) 1024
+            )
+            model.game.room
+        _ ->
+          drawRoom (0, 0) model.game.room
+      ]
     ]
 
 -- TODO: Move lazy inside
@@ -184,9 +208,10 @@ drawClock t =
         []
   in
   svg
-    [ width "228"
-    , height "228"
-    , viewBox "0 0 100 100"
+    -- [ width "228"
+    -- , height "228"
+    [ viewBox "0 0 100 100"
+    , style [("position", "absolute"), ("bottom", "228px")]
     ]
     <|
     -- [ rect [ x "0", y "0", width "100", height "100", fill "grey" ] []
@@ -212,8 +237,9 @@ drawClock t =
 drawMinimap : Level.Level -> Html Msg
 drawMinimap level =
   svg
-    [ width "228"
-    , height "192"
+    -- [ width "228"
+    -- , height "192"
+    [ style [("position", "absolute"), ("bottom", "0")]
     , viewBox "0 0 152 128"
     ]
     <| (rect [ x "0" , y "0" , width "152" , height "128" , fill "rgb(75, 73, 75)" ] [])
@@ -266,8 +292,9 @@ drawMinimapRoom (ox, oy) (dx, dy) room =
 drawRoom : Point -> Room -> Html Msg
 drawRoom (dx, dy) room =
   svg
-    [ width "1216"
-    , height "1024"
+    -- [ width "1216"
+    -- , height "1024"
+    [ style [("position", "absolute"), ("top", "50%"), ("transform", "translate(0, -50%)")]
     , viewBox <| String.fromInt dx ++ " " ++ String.fromInt dy ++ " 1216 1024"
     ]
     (
