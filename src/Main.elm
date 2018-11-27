@@ -13,6 +13,7 @@ import Svg.Attributes exposing (..)
 import Time
 
 import AI exposing (..)
+import Creature
 import Dir exposing (..)
 import Game exposing (..)
 import Room exposing (..)
@@ -377,16 +378,18 @@ tileObjects : Point -> Coord -> Room -> List (Html Msg)
 tileObjects offset i room =
   let p = Utils.sub (toPoint room.width i) offset
   in
-  if List.member i room.creatures
-    then
-      --[ imgTile p i (cycle (0, 8) [(1, 8), (2, 8)] animationTick) Atlas ]
-      [ imgTile p (0, 8) Atlas ]
-    else if room.swordPos == i
-      then [ imgTile p (8, 15) Atlas ]
-      else
-        if room.playerCoord == i
-        then [ imgTile p (6, 4) Atlas ]
-        else []
+  case List.filter (Creature.isTaken i) room.creatures of
+    c :: _ ->
+      case c of
+        (Creature.Roach _) -> [ imgTile p (0, 8) Atlas ]
+        --[ imgTile p i (cycle (0, 8) [(1, 8), (2, 8)] animationTick) Atlas ]
+    _ ->
+      if room.swordPos == i
+        then [ imgTile p (8, 15) Atlas ]
+        else
+          if room.playerCoord == i
+          then [ imgTile p (6, 4) Atlas ]
+          else []
 
 img50Tile : (Int, Int) -> (Int, Int) -> Html Msg
 img50Tile (ix, iy) (px, py) =

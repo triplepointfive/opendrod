@@ -4,11 +4,12 @@ import Array
 import Dict
 import Maybe
 
+import Creature
 import Dir
 import Room exposing (..)
 import Utils exposing (..)
 
-type BuildTile = Tile Tile | Creature
+type BuildTile = Tile Tile | Creature (Coord -> Creature.Creature)
 
 type alias RoomBuilder =
   { blueprint : List String
@@ -84,7 +85,7 @@ buildRoom completed pos dir builder =
     , wallTiles = buildWalls blueprint 38
     }
 
-buildBlueprint : Bool -> RoomBuilder -> (Array.Array Tile, List Creature)
+buildBlueprint : Bool -> RoomBuilder -> (Array.Array Tile, List Creature.Creature)
 buildBlueprint completed { blueprint, repository } =
   let
     tilesMap = Dict.fromList repository
@@ -92,10 +93,10 @@ buildBlueprint completed { blueprint, repository } =
     buildTile (i, char) (tiles, creatures) =
       case Dict.get char tilesMap of
         Just (Tile t) -> (t :: tiles, creatures)
-        Just Creature ->
+        Just (Creature cr) ->
           if completed
             then (Floor :: tiles, creatures)
-            else (Floor :: tiles, i :: creatures)
+            else (Floor :: tiles, cr i :: creatures)
         Nothing -> case char of
           '#' -> (Wall :: tiles, creatures)
           'X' -> (Checkpoint :: tiles, creatures)

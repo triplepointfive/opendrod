@@ -3,6 +3,7 @@ module Room exposing (..)
 import Array
 import Dict
 
+import Creature
 import Dir
 import Utils exposing (..)
 
@@ -28,11 +29,9 @@ type Tile
   | GreenDoor DoorState
   | Arrow Dir.Dir
 
-type alias Creature = Coord
-
 type alias Room =
   { blueprint : Array.Array Tile
-  , creatures : List Creature
+  , creatures : List Creature.Creature
   , swordPos : Coord
   , playerCoord : Coord
   , playerDir : Dir.Dir
@@ -82,7 +81,7 @@ shiftPos (x, y) { width, height, playerCoord } =
 canRPlayerMoveTo : Coord -> Room -> Coord -> Bool
 canRPlayerMoveTo prevCoord level coord =
   let
-    isUntaken = List.isEmpty <| List.filter ((==) coord) level.creatures
+    isUntaken = List.isEmpty <| List.filter (Creature.isTaken coord) level.creatures
     dir = Dir.fromDelta (sub (toPoint level.width coord) (toPoint level.width prevCoord))
 
     canLeave = case Array.get prevCoord level.blueprint of
@@ -109,7 +108,7 @@ concatLevels origin addend (dx, dy) =
     | blueprint = Array.append addend.blueprint origin.blueprint
     , height    = origin.height + origin.height
     , wallTiles = Array.append addend.wallTiles origin.wallTiles
-    , creatures = addend.creatures ++ List.map ((+) size) origin.creatures
+    , creatures = addend.creatures ++ List.map (Creature.move ((+) size)) origin.creatures
 
     , swordPos  = origin.swordPos + size
     , playerCoord = origin.playerCoord + size
@@ -119,7 +118,7 @@ concatLevels origin addend (dx, dy) =
     | blueprint = Array.append origin.blueprint addend.blueprint
     , height    = origin.height + origin.height
     , wallTiles = Array.append origin.wallTiles addend.wallTiles
-    , creatures = origin.creatures ++ List.map ((+) size) addend.creatures
+    , creatures = origin.creatures ++ List.map (Creature.move ((+) size)) addend.creatures
     }
   else if dx > 0 then
     { origin

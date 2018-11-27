@@ -6,6 +6,7 @@ import Maybe
 import Debug
 
 import AI
+import Creature
 import Dir
 import Level
 import Room exposing (..)
@@ -139,7 +140,7 @@ triggerSword : Game -> Game
 triggerSword = onRoom (swordToggle << swordKill)
 
 swordKill : Room -> Room
-swordKill room = { room | creatures = List.filter ((/=) room.swordPos) room.creatures }
+swordKill room = { room | creatures = List.filter (not << Creature.isTaken room.swordPos) room.creatures }
 
 updateRoom : Game -> Game
 updateRoom = ifClear updateClearRoom
@@ -166,11 +167,11 @@ aiTurn game = List.foldl creatureTurn game game.room.creatures
 ifAlive : (Game -> Game) -> Game -> Game
 ifAlive f game = if game.alive then f game else game
 
-creatureTurn : Creature -> Game -> Game
-creatureTurn creature = ifAlive (updateAlive << onRoom (AI.roach creature))
+creatureTurn : Creature.Creature -> Game -> Game
+creatureTurn creature = ifAlive (updateAlive << onRoom (AI.turn creature))
 
 updateAlive : Game -> Game
-updateAlive game = { game | alive = List.all ((/=) game.room.playerCoord) game.room.creatures }
+updateAlive game = { game | alive = List.all (not << Creature.isTaken game.room.playerCoord) game.room.creatures }
 
 
 --   Leave delta newPlayerPos ->

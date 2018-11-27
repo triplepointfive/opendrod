@@ -4,6 +4,7 @@ import Dict
 import Debug
 
 import Dir
+import Creature
 import Level exposing (..)
 import Room exposing (..)
 import Utils exposing (Point)
@@ -11,7 +12,7 @@ import Utils exposing (Point)
 level : Level.Level
 level =
   -- { init = buildRoom False (16, 15) Dir.E roomm1m1
-  { init = buildRoom True (37, 14) Dir.E roomm1m1
+  { init = buildRoom False (37, 14) Dir.E roomm1m1
   -- { init = buildRoom False (20, 14) Dir.E room02
   , currentRoomId = (-1, -1)
   -- , currentRoomId = (0, 2)
@@ -99,7 +100,7 @@ roomm1m1 =
     , "######################################"
     ]
   , repository =
-    [ ('R', Creature)
+    [ ('R', Creature Creature.Roach)
     , ('X', Tile Checkpoint)
     ]
   }
@@ -230,7 +231,7 @@ room01 =
     , "##############   #########   #########"
     ]
   , repository =
-    [ ('R', Creature)
+    [ ('R', Creature Creature.Roach)
     ]
   }
 
@@ -271,7 +272,7 @@ room02 =
       , "######################################"
       ]
   , repository =
-    [ ('R', Creature)
+    [ ('R', Creature Creature.Roach)
     , ('Y', Tile <| Arrow Dir.NW)
     , ('U', Tile <| Arrow Dir.NE)
     , ('H', Tile <| Arrow Dir.W)

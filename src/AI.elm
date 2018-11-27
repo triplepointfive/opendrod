@@ -1,32 +1,38 @@
-module AI exposing (..)
+module AI exposing (turn, squareDistanceToPlayer)
 
+import Creature exposing (..)
 import Room exposing (..)
 import Utils exposing (..)
 
 import Debug
 
-roach : Creature -> Room -> Room
-roach coord level =
-  if List.member coord level.creatures
+turn : Creature -> Room -> Room
+turn creature =
+  case creature of
+    Roach coord -> roach coord
+
+roach : Coord -> Room -> Room
+roach coord room =
+  if List.member (Roach coord) room.creatures
     then
       let
-        dx = sign <| (modBy level.width level.playerCoord) - (modBy level.width coord)
-        dy = level.width * sign ((level.playerCoord // level.width) - (coord // level.width))
+        dx = sign <| (modBy room.width room.playerCoord) - (modBy room.width coord)
+        dy = room.width * sign ((room.playerCoord // room.width) - (coord // room.width))
         directMoves =
           (dx + dy + coord) ::
-          (List.sortBy (squareDistanceToPlayer level) [dy + coord, dx + coord])
+          (List.sortBy (squareDistanceToPlayer room) [dy + coord, dx + coord])
         newCoord =
-          case List.filter (canMoveTo coord level) directMoves of
+          case List.filter (canMoveTo coord room) directMoves of
             freeCoord :: _ -> freeCoord
             _ -> coord
       in
-      { level
-      | creatures = newCoord :: List.filter ((/=) coord) level.creatures
+      { room
+      | creatures = Roach newCoord :: List.filter ((/=) (Roach coord)) room.creatures
       }
     else
-      level
+      room
 
-squareDistanceToPlayer : Room -> Creature -> Int
+squareDistanceToPlayer : Room -> Coord -> Int
 squareDistanceToPlayer level coords =
   let
     (px, py) = toPoint level.width level.playerCoord
